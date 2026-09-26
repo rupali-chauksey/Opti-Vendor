@@ -411,21 +411,7 @@ Multiple independent guardrails run in sequence. If one fails, another catches t
 ### 4. Audit-First Design
 Every decision (approval, rejection, execution) is logged to `approval_log.txt` and `agent_trace.log` for full traceability.
 
----
-
-## 🎯 Interview Talking Points
-
-**Q: What makes this production-ready?**
-> "Three things: deterministic guardrails that don't depend on LLM behavior, layered defense where multiple checks run independently, and a full audit trail. Every order passes through Budget Guard → Human Approval → Overstocking Guard, and every decision is logged."
-
-**Q: How do you handle LLM hallucination?**
-> "Guardrails are enforced in Python code, not in the prompt. If the LLM says 'execute order' but the budget guard says 'no', the code wins. We also log every tool call to agent_trace.log for post-mortem analysis."
-
-**Q: What was the biggest challenge?**
-> "Sequence ordering. Initially, the Overstocking Guard ran first and reduced the quantity before the Budget Guard could check the original value. I moved the Budget Guard to check the ORIGINAL value before any reduction. This ensures the manager sees the true scope of the order — not a sanitized version."
-
----
-
+-
 ## 📝 License
 MIT License — see LICENSE file for details.
 
