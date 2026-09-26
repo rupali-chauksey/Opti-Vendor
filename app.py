@@ -489,15 +489,19 @@ with tab_chat:
         
         st.markdown("---")
         st.warning("⚠️ **Pending Order Approval Required**")
+        
+        # Calculate original order value
+        original_value = deal['quantity'] * deal['unit_price']
+        
         st.markdown(f"""
         <div class="optimizer-card" style="border-left: 5px solid #f59e0b;">
             <h4 style="margin-top:0; color:#0f172a;">📋 Order Details Awaiting Manager Approval</h4>
             <ul style="color:#334155; font-size:0.95rem; line-height:1.8;">
                 <li><b>Product:</b> {deal['product_name']}</li>
                 <li><b>Vendor:</b> {deal['vendor_name']}</li>
-                <li><b>Quantity:</b> {deal['quantity']} units</li>
+                <li><b>Requested Quantity:</b> {deal['quantity']} units</li>
                 <li><b>Unit Price:</b> ${deal['unit_price']:.2f}</li>
-                <li><b>Total Value:</b> <b style="color:#dc2626;">${deal['total_cost']:.2f}</b></li>
+                <li><b>Original Order Value:</b> <b style="color:#dc2626;">${original_value:.2f}</b></li>
                 <li><b>Delivery Window:</b> {deal.get('delivery_days', 'N/A')} days</li>
             </ul>
             <p style="color:#64748b; font-size:0.85rem; margin-top:10px;">
@@ -521,14 +525,21 @@ with tab_chat:
                     req_qty = deal.get("quantity", exec_res["ordered_quantity"])
                     actual_qty = exec_res["ordered_quantity"]
                     cur_stock = exec_res.get("previous_stock", 0)
-                    target_stock = exec_res.get("target_stock", cur_stock + actual_qty)
+                    
+                    # Fetch correct target stock from database
+                    conn = sqlite3.connect("veganflow_store.db")
+                    cur = conn.cursor()
+                    cur.execute("SELECT target_stock_level FROM inventory WHERE product_id = ?", (deal["product_id"],))
+                    row = cur.fetchone()
+                    conn.close()
+                    target_stock = row[0] if row else (cur_stock + actual_qty)
                     max_allowed = target_stock - cur_stock
 
                     if req_qty > actual_qty:
                         qty_lines = (
                             f"- **Requested Quantity:** {req_qty} units\n"
-                            f"- **Actual Ordered Quantity:** {actual_qty} units (reduced by Overstocking Guard)\n"
-                            f"- **Reason:** Target stock ({target_stock}) - Current stock ({cur_stock}) = {max_allowed} units maximum allowed\n"
+                            f"- **Actual Ordered Quantity:** {actual_qty} units *(reduced by Overstocking Guard)*\n"
+                            f"- **Reason:** Target stock ({target_stock}) - Previous stock ({cur_stock}) = {max_allowed} units maximum allowed\n"
                         )
                     else:
                         qty_lines = (
@@ -538,18 +549,20 @@ with tab_chat:
 
                     success_msg = (
                         f"✅ **Order Approved & Executed Successfully!**\n\n"
+                        f"- **Product:** {deal['product_name']}\n"
+                        f"- **Vendor:** {deal['vendor_name']}\n"
                         f"{qty_lines}"
-                        f"- **Unit Price:** \\${deal['unit_price']:.2f}\n"
-                        f"- **Total PO Cost:** \\${exec_res['total_value']:.2f}\n"
+                        f"- **Unit Price:** ${deal['unit_price']:.2f}\n"
+                        f"- **Total PO Cost:** ${exec_res['total_value']:.2f}\n"
                         f"- **New Stock Level:** {exec_res['updated_stock']} units\n"
-                        f"- **POS Status:** ✅ Successfully updated in database"
+                        f"- **POS Status:** ✅ Successfully updated in database."
                     )
                     st.session_state["chat_history"].append({"role": "assistant", "content": success_msg})
                     
                     # Audit log
                     try:
                         with open("approval_log.txt", "a", encoding="utf-8") as f:
-                            f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} | APPROVED | {deal['product_name']} | {actual_qty} units @ ${deal['unit_price']:.2f} | Total: ${exec_res['total_value']:.2f} | New Stock: {exec_res['updated_stock']}\n")
+                            f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} | APPROVED | {deal['product_name']} | Requested: {req_qty} | Executed: {actual_qty} | Total: ${exec_res['total_value']:.2f}\n")
                     except Exception as e:
                         pass
                     
@@ -565,14 +578,14 @@ with tab_chat:
                 reject_msg = (
                     f"❌ **Order Rejected by Manager**\n\n"
                     f"The order for **{deal['quantity']} units** of **{deal['product_name']}** "
-                    f"(Total: **${deal['total_cost']:.2f}**) has been rejected. No action taken."
+                    f"(Total: **${original_value:.2f}**) has been rejected. No action taken."
                 )
                 st.session_state["chat_history"].append({"role": "assistant", "content": reject_msg})
                 
                 # Audit log
                 try:
                     with open("approval_log.txt", "a", encoding="utf-8") as f:
-                        f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} | REJECTED | {deal['product_name']} | {deal['quantity']} units @ ${deal['unit_price']:.2f} | Total: ${deal['total_cost']:.2f}\n")
+                        f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} | REJECTED | {deal['product_name']} | {deal['quantity']} units | Total: ${original_value:.2f}\n")
                 except Exception as e:
                     pass
                 
