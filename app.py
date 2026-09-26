@@ -248,7 +248,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Sidebar
+# Sidebar with Demo Scenarios
 with st.sidebar:
     st.image("https://img.icons8.com/color/96/bot.png", width=56)
     st.markdown("### System Health & Stack")
@@ -257,10 +257,51 @@ with st.sidebar:
     st.info("💾 Database: `veganflow_store.db` (SQLite)")
     
     st.divider()
+    
+    # ============================================
+    # DEMO SCENARIOS IN SIDEBAR
+    # ============================================
+    st.markdown("### 🎬 Demo Scenarios")
+    st.caption("Click any button to auto-run agent")
+    
+    # --- Basic Queries ---
+    st.markdown("**📊 Basic Queries**")
+    if st.button("1️⃣ Specific Product", use_container_width=True, key="sb_1"):
+        st.session_state["demo_query"] = "Check stock for Vegan Jumbo Shrimp"
+    if st.button("2️⃣ Out of Stock", use_container_width=True, key="sb_2"):
+        st.session_state["demo_query"] = "Check my store inventory and find which items are out of stock"
+    if st.button("3️⃣ Expiring Soon", use_container_width=True, key="sb_3"):
+        st.session_state["demo_query"] = "Which items are expiring soon?"
+    
+    st.markdown("---")
+    
+    # --- Small Orders ---
+    st.markdown("**🟢 Small Orders (Auto)**")
+    if st.button("4️⃣ Order 50 Oat Barista", use_container_width=True, key="sb_4"):
+        st.session_state["demo_query"] = "Order 50 units of Oat Barista Blend"
+    if st.button("5️⃣ Order 50 Almond Milk", use_container_width=True, key="sb_5"):
+        st.session_state["demo_query"] = "Order 50 units of Almond Milk Unsweetened"
+    
+    st.markdown("---")
+    
+    # --- Large Orders ---
+    st.markdown("**🟠 Large Orders (Approval)**")
+    if st.button("6️⃣ Order 200 Truffle Brie", use_container_width=True, key="sb_6"):
+        st.session_state["demo_query"] = "Order 200 units of Cultured Truffle Brie"
+    if st.button("7️⃣ Order 500 Oat Barista", use_container_width=True, key="sb_7"):
+        st.session_state["demo_query"] = "Order 500 units of Oat Barista Blend"
+    
+    st.divider()
+    
+    # --- Database Maintenance ---
     st.markdown("#### Database Maintenance")
     if st.button("⚠️ Reset POS & Store Database", use_container_width=True):
         init_database()
-        st.success("Database restored to default catalog!")
+        st.session_state["chat_history"] = [
+            {"role": "assistant", "content": "Database reset! Ready for fresh demo."}
+        ]
+        st.session_state["pending_approval"] = None
+        st.success("Database restored!")
         st.rerun()
 
 # Helper: Get Live Inventory DF
@@ -454,17 +495,15 @@ with tab_warroom:
             </div>
             """, unsafe_allow_html=True)
             
-            st.balloons()
-            st.success(f"🎉 **Autonomous Reorder Cycle Completed!** Restocked `{target_prod}` with **${rfq_res['cost_saved']:.2f} in autonomous cost savings**.")
-
+           
 # -------------------------------------------------------------
-# TAB 2: MULTI-AGENT CHAT TERMINAL (WITH HITL APPROVAL)
+# TAB 2: MULTI-AGENT CHAT TERMINAL (WITH HITL APPROVAL + DEMO AUTO-RUN)
 # -------------------------------------------------------------
 with tab_chat:
     st.markdown("""
     <div class="optimizer-card">
         <h4 style="margin-top:0; color:#0f172a; font-weight:700;">🤖 Multi-Agent Interactive Chat Terminal</h4>
-        <p style="color:#64748b; font-size:0.95rem; margin-bottom:0;">Chat directly with the <b>VeganFlow Store Manager Orchestrator</b>. View real-time Tool Execution steps streamed as agents collaborate.</p>
+        <p style="color:#64748b; font-size:0.95rem; margin-bottom:0;">Chat directly with the <b>VeganFlow Store Manager Orchestrator</b>. Or click a demo button in the <b>sidebar</b> to auto-run.</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -476,6 +515,12 @@ with tab_chat:
 
     if "pending_approval" not in st.session_state:
         st.session_state["pending_approval"] = None
+
+    if "demo_query" not in st.session_state:
+        st.session_state["demo_query"] = None
+
+    if "active_demo_query" not in st.session_state:
+        st.session_state["active_demo_query"] = None
 
     # Display chat history
     for msg in st.session_state["chat_history"]:
@@ -513,7 +558,6 @@ with tab_chat:
         col1, col2 = st.columns(2)
         with col1:
             if st.button("✅ Approve Order", type="primary", use_container_width=True, key="approve_btn"):
-                # Execute the order
                 exec_res = execute_order(
                     vendor_id=deal["vendor_id"],
                     product_id=deal["product_id"],
@@ -526,7 +570,6 @@ with tab_chat:
                     actual_qty = exec_res["ordered_quantity"]
                     cur_stock = exec_res.get("previous_stock", 0)
                     
-                    # Fetch correct target stock from database
                     conn = sqlite3.connect("veganflow_store.db")
                     cur = conn.cursor()
                     cur.execute("SELECT target_stock_level FROM inventory WHERE product_id = ?", (deal["product_id"],))
@@ -559,11 +602,10 @@ with tab_chat:
                     )
                     st.session_state["chat_history"].append({"role": "assistant", "content": success_msg})
                     
-                    # Audit log
                     try:
                         with open("approval_log.txt", "a", encoding="utf-8") as f:
                             f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} | APPROVED | {deal['product_name']} | Requested: {req_qty} | Executed: {actual_qty} | Total: ${exec_res['total_value']:.2f}\n")
-                    except Exception as e:
+                    except Exception:
                         pass
                     
                     st.session_state["pending_approval"] = None
@@ -582,11 +624,10 @@ with tab_chat:
                 )
                 st.session_state["chat_history"].append({"role": "assistant", "content": reject_msg})
                 
-                # Audit log
                 try:
                     with open("approval_log.txt", "a", encoding="utf-8") as f:
                         f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} | REJECTED | {deal['product_name']} | {deal['quantity']} units | Total: ${original_value:.2f}\n")
-                except Exception as e:
+                except Exception:
                     pass
                 
                 st.session_state["pending_approval"] = None
@@ -594,8 +635,17 @@ with tab_chat:
                 time.sleep(1)
                 st.rerun()
 
-    # --- CHAT INPUT ---
-    user_query = st.chat_input("Ask: 'Check my store inventory and find which items are out of stock'...")
+    # --- CHAT INPUT (Manual + Demo Auto-Fill) ---
+    user_query_manual = st.chat_input("Ask: 'Check my store inventory...'")
+    
+    # Determine which query to process
+    user_query = None
+    if user_query_manual:
+        user_query = user_query_manual
+    elif st.session_state.get("demo_query"):
+        user_query = st.session_state["demo_query"]
+        st.session_state["demo_query"] = None
+    
     if user_query:
         st.session_state["chat_history"].append({"role": "user", "content": user_query})
         with st.chat_message("user"):
@@ -606,7 +656,6 @@ with tab_chat:
                 status_box.write("🛠️ **Executing Tool:** `orchestrator_node` (Intent Classification)")
                 time.sleep(0.3)
                 
-                # Execute LangGraph Pipeline
                 init_state = {
                     "user_query": user_query,
                     "intent": "CHECK_STOCK",
