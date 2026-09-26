@@ -20,8 +20,8 @@ logging.basicConfig(
 # --- 1. Define Global State Schema ---
 class AgentState(TypedDict):
     user_query: str
-    intent: str                          # "CHECK_STOCK", "NEGOTIATE_RESTOCK", "GENERAL"
-    filter_type: str                     # "OUT_OF_STOCK", "CRITICAL_STOCKOUT", "EXPIRING_SOON", "SPECIFIC_PRODUCT"
+    intent: str
+    filter_type: str
     target_product: Optional[str]
     target_quantity: int
     inventory_results: List[Dict[str, Any]]
@@ -40,25 +40,18 @@ class AgentState(TypedDict):
 
 def orchestrator_node(state: AgentState) -> Dict[str, Any]:
     """
-    Node 1: Classifies Intent with strict Entity Extraction & Intent Guardrails.
-    
-    SYSTEM PROMPT RULES:
-    - If the user's query contains a specific product name (e.g., 'Vegan Jumbo Shrimp', 'Oat Barista Blend', 'Cultured Truffle Brie'), 
-      you MUST extract it as `target_product` and use the `SPECIFIC_PRODUCT` filter. NEVER use `OUT_OF_STOCK` when a specific product is mentioned.
-    - If the user asks about 'expiring soon' or 'expiry', you MUST use the `EXPIRING_SOON` filter. Do NOT use `OUT_OF_STOCK` for this query.
-    - If user asks for 'out of stock' without a specific product, use OUT_OF_STOCK filter.
-    - If the tool returns an empty list, respond with 'All items are currently in stock.' Do NOT say 'product not found'.
+    Node 1: Classifies Intent with strict Entity Extraction & Quantity Extraction.
     """
     query = state.get("user_query", "").strip().lower()
     log_msg = f"🧠 [Orchestrator] Ingested user query: '{query}'"
     logging.info(log_msg)
-    
+
     intent = "CHECK_STOCK"
     filter_type = "OUT_OF_STOCK"
     target_product = None
     target_qty = state.get("target_quantity", 100) or 100
 
-    # BUG 2 FIX: Extract Quantity from query
+    # --- QUANTITY EXTRACTION ---
     extracted_qty = None
     m_qty = re.search(r'(?:order\s*quantity|quantity|order|qty|units?|amount|count)\s*[:=]?\s*(\d+)', query)
     if m_qty:
@@ -75,7 +68,7 @@ def orchestrator_node(state: AgentState) -> Dict[str, Any]:
     if extracted_qty and extracted_qty > 0:
         target_qty = extracted_qty
 
-    # Catalog of known products & aliases
+    # --- PRODUCT CATALOG ---
     catalog_map = [
         ("Vegan Jumbo Shrimp", ["vegan jumbo shrimp", "jumbo shrimp", "shrimp"]),
         ("Oat Barista Blend", ["oat barista blend", "oat barista", "oat milk"]),
@@ -89,7 +82,6 @@ def orchestrator_node(state: AgentState) -> Dict[str, Any]:
         ("Almond Milk Unsweetened", ["almond milk unsweetened", "almond milk"])
     ]
 
-    # PRIORITY 1: Entity Extraction for Specific Product
     for canonical_name, aliases in catalog_map:
         if any(alias in query for alias in aliases):
             target_product = canonical_name
@@ -102,7 +94,6 @@ def orchestrator_node(state: AgentState) -> Dict[str, Any]:
         else:
             intent = "CHECK_STOCK"
     else:
-        # Generic Queries
         if any(k in query for k in ["out of stock", "empty", "zero stock", "no units"]):
             intent = "CHECK_STOCK"
             filter_type = "OUT_OF_STOCK"
@@ -130,34 +121,34 @@ def orchestrator_node(state: AgentState) -> Dict[str, Any]:
         "trace_steps": [f"Orchestrator identified target_product='{target_product}' with filter '{filter_type}', quantity={target_qty}"]
     }
 
+
 def shelf_monitor_node(state: AgentState) -> Dict[str, Any]:
     """
-    Node 2: Executes `query_inventory` tool and checks Days of Supply.
+    Node 2: Executes query_inventory tool and checks Days of Supply.
     """
     filter_type = state.get("filter_type", "OUT_OF_STOCK")
     target_product = state.get("target_product")
-    
+
     log_msg = f"🛠️ [Shelf Monitor] Calling query_inventory(filter_type='{filter_type}', product_name='{target_product}')"
     logging.info(log_msg)
-    
-    # 1. Execute query_inventory for requested filter
+
     items = query_inventory(filter_type=filter_type, product_name=target_product)
-    
-    # Also check if critical items exist when out of stock returns []
+
     if filter_type == "OUT_OF_STOCK" and not items:
         crit_items = query_inventory(filter_type="CRITICAL_STOCKOUT")
     else:
         crit_items = []
-        
+
     trace_msg = f"Shelf Monitor scanned database. Found {len(items)} matching items."
     if crit_items:
         trace_msg += f" (Identified {len(crit_items)} critical risk SKUs)."
-        
+
     return {
         "inventory_results": items,
         "target_product": items[0]["name"] if items else (crit_items[0]["name"] if crit_items else target_product),
         "trace_steps": [trace_msg]
     }
+
 
 def negotiation_node(state: AgentState) -> Dict[str, Any]:
     """
@@ -167,15 +158,13 @@ def negotiation_node(state: AgentState) -> Dict[str, Any]:
     qty = state.get("target_quantity", 100)
     cur_iter = state.get("iteration_count", 0) + 1
     idx = state.get("current_vendor_index", 0)
-    
-    # Find candidate vendors if not populated
+
     vendors = state.get("vendor_candidates", [])
     if not vendors:
-        # Map product name to product_id
         conn_check = query_inventory(filter_type="SPECIFIC_PRODUCT", product_name=prod_name)
         pid = conn_check[0]["product_id"] if conn_check else "P-OAT1"
         vendors = fetch_vendors(product_id=pid)
-        
+
     if idx >= len(vendors) or cur_iter > state.get("max_iterations", 3):
         log_msg = f"⚠️ [Negotiation] Loop limit ({cur_iter}) reached or vendors exhausted."
         logging.warning(log_msg)
@@ -189,13 +178,12 @@ def negotiation_node(state: AgentState) -> Dict[str, Any]:
     pid = vendor.get("product_id", "P-OAT1")
     list_p = vendor.get("price_wholesale", 3.80)
     target_p = round(list_p * 0.90, 2)
-    
-    # Send A2A RFQ
+
     rfq_result = send_a2a_rfq(vendor_endpoint=endpoint, product_id=pid, quantity=qty, target_unit_price=target_p)
-    
+
     log_msg = f"💬 [A2A Handshake] Round {cur_iter} with {rfq_result.get('vendor_name')}: Status={rfq_result.get('status')}, Price=${rfq_result.get('negotiated_price')}"
     logging.info(log_msg)
-    
+
     deal = None
     if rfq_result.get("status") in ["ACCEPTED", "COUNTER_ACCEPTED"]:
         deal = {
@@ -219,9 +207,11 @@ def negotiation_node(state: AgentState) -> Dict[str, Any]:
         "trace_steps": [f"A2A RFQ sent to {rfq_result.get('vendor_name')}: Agreed Price ${rfq_result.get('negotiated_price')}/unit (Savings: ${rfq_result.get('cost_saved')})"]
     }
 
+
 def execution_node(state: AgentState) -> Dict[str, Any]:
     """
-    Node 4: Validates Budget Guard (> $500 HITL) and Overstocking Guard before executing order.
+    Node 4: Budget Guard (checks ORIGINAL value) → Human Approval OR Execute Order.
+    Overstocking Guard fires inside execute_order().
     """
     deal = state.get("agreed_deal")
     if not deal:
@@ -229,51 +219,49 @@ def execution_node(state: AgentState) -> Dict[str, Any]:
             "execution_result": {"success": False, "message": "No deal agreed."},
             "trace_steps": ["Execution skipped: No finalized vendor deal."]
         }
-        
+
     raw_qty = deal.get("quantity", 100)
     unit_p = deal.get("unit_price", 3.42)
-    raw_total_val = deal.get("total_cost", round(raw_qty * unit_p, 2))
-    
-    # Check inventory headroom to determine effective order capacity
-    inv = query_inventory(filter_type="SPECIFIC_PRODUCT", product_name=deal.get("product_name", "Oat Barista Blend"))
-    cur_stock = inv[0]["stock_quantity"] if inv else 12
-    target_stock = inv[0]["target_stock_level"] if inv else 100
-    max_allowed = target_stock - cur_stock
-    
-    # GUARD 3: Budget Guard ($500 limit)
-    # Triggers for large bulk order requests (>= 500 units) or when effective order cost exceeds $500
-    if raw_qty >= 500 or (max_allowed > 0 and (max_allowed * unit_p) > 500.0) or (raw_total_val > 500.0 and raw_qty > 250):
-        log_msg = f"🛑 [Budget Guard] Order value ${raw_total_val:.2f} > $500. Human approval required."
+    # ORIGINAL requested value (before any overstocking reduction)
+    original_value = round(raw_qty * unit_p, 2)
+
+    # ============================================
+    # GUARD: BUDGET (checks ORIGINAL value)
+    # ============================================
+    if original_value > 500.0:
+        log_msg = f"🛑 [Budget Guard] Original order value ${original_value:.2f} ({raw_qty} units @ ${unit_p:.2f}) > $500. Human approval required."
         logging.warning(log_msg)
         return {
             "human_approval_needed": True,
             "execution_result": {
                 "success": False,
                 "status": "PENDING_APPROVAL",
-                "message": f"Human approval required. Order total (${raw_total_val:.2f}) exceeds the autonomous limit of $500.00."
+                "message": f"Human approval required. Original order value ${original_value:.2f} exceeds the $500 autonomous threshold."
             },
-            "trace_steps": [f"Budget Guard intercepted: Order total ${raw_total_val:.2f} > $500 requires human authorization."]
+            "trace_steps": [f"Budget Guard: Original value ${original_value:.2f} > $500 requires manager authorization."]
         }
-        
-    # Execute order with Overstocking Guard
+
+    # ============================================
+    # EXECUTE ORDER (Overstocking Guard fires inside)
+    # ============================================
     exec_res = execute_order(
         vendor_id=deal.get("vendor_id", "V-EARTH"),
         product_id=deal.get("product_id", "P-OAT1"),
         quantity=raw_qty,
         price=unit_p
     )
-    
+
     logging.info(f"📦 [Execution] Order committed to SQLite: {exec_res.get('message')}")
-    
+
     return {
         "execution_result": exec_res,
         "trace_steps": [f"Executed order: {exec_res.get('message')}"]
     }
 
+
 def output_formatter_node(state: AgentState) -> Dict[str, Any]:
     """
-    Node 5 (GUARD 4): Synthesizes raw outputs into a polite, human-readable natural language response.
-    NEVER outputs raw JSON.
+    Node 5: Synthesizes raw outputs into natural language. NEVER outputs raw JSON.
     """
     intent = state.get("intent")
     filter_type = state.get("filter_type")
@@ -282,7 +270,7 @@ def output_formatter_node(state: AgentState) -> Dict[str, Any]:
     exec_res = state.get("execution_result")
     human_needed = state.get("human_approval_needed", False)
 
-    # 1. Stock Check Responses
+    # --- STOCK CHECK ---
     if intent == "CHECK_STOCK":
         if filter_type == "SPECIFIC_PRODUCT":
             if not items:
@@ -312,7 +300,6 @@ def output_formatter_node(state: AgentState) -> Dict[str, Any]:
                     + "\n\nI recommend prioritizing these batches or applying promotional discounts to prevent waste."
                 )
         elif not items:
-            # Check if there are critical stockout risks
             crit = query_inventory(filter_type="CRITICAL_STOCKOUT")
             if not crit:
                 final_text = (
@@ -332,13 +319,13 @@ def output_formatter_node(state: AgentState) -> Dict[str, Any]:
             lines = [f"• **{it['name']} ({it['product_id']})**: {it['stock_quantity']} units in stock (Status: {it.get('status', 'CRITICAL')}, Days of Supply: {it.get('days_of_supply', 0)} days)." for it in items]
             final_text = f"Here are the Critical Stockout and inventory scan results:\n\n" + "\n".join(lines)
 
-    # 2. Restock Negotiation Responses
+    # --- NEGOTIATE RESTOCK ---
     elif intent == "NEGOTIATE_RESTOCK":
         if human_needed:
             final_text = (
                 f"⚠️ **Human Approval Required**\n\n"
-                f"We negotiated a purchase deal with **{deal['vendor_name']}** for **{deal['quantity']} units** of **{deal['product_name']}** at **\\${deal['unit_price']:.2f}/unit**.\n\n"
-                f"Because the total order value is **\\${deal['total_cost']:.2f}** (which exceeds the **\\$500.00** autonomous threshold), manager confirmation is required before placing the order."
+                f"We negotiated a purchase deal with **{deal['vendor_name']}** for **{deal['quantity']} units** of **{deal['product_name']}** at **${deal['unit_price']:.2f}/unit**.\n\n"
+                f"Because the total order value is **${deal['total_cost']:.2f}** (which exceeds the **$500.00** autonomous threshold), manager confirmation is required before placing the order."
             )
         elif exec_res and exec_res.get("success"):
             warning = f"\n\nNote: {exec_res.get('guard_warning')}" if exec_res.get("guard_warning") else ""
@@ -347,9 +334,9 @@ def output_formatter_node(state: AgentState) -> Dict[str, Any]:
                 f"- Product: {deal['product_name']}\n"
                 f"- Vendor: {deal['vendor_name']}\n"
                 f"- Quantity Purchased: {exec_res['ordered_quantity']} units\n"
-                f"- Negotiated Price: \\${deal['unit_price']:.2f} / unit\n"
-                f"- Total PO Cost: \\${exec_res['total_value']:.2f}\n"
-                f"- Cost Savings: \\${deal.get('cost_saved', 0.0):.2f} below standard list price\n"
+                f"- Negotiated Price: ${deal['unit_price']:.2f} / unit\n"
+                f"- Total PO Cost: ${exec_res['total_value']:.2f}\n"
+                f"- Cost Savings: ${deal.get('cost_saved', 0.0):.2f} below standard list price\n"
                 f"- Inventory Status: Successfully updated in POS. New stock: {exec_res['updated_stock']} units.{warning}"
             )
         else:
@@ -361,43 +348,41 @@ def output_formatter_node(state: AgentState) -> Dict[str, Any]:
     logging.info(f"📤 [Response Formatter] Formatted natural language response:\n{final_text}")
     return {"final_response": final_text}
 
+
 # --- 3. Routing Conditional Edges ---
 
 def route_after_orchestrator(state: AgentState) -> str:
-    """Routes to either Shelf Monitor (for queries) or directly into Negotiation loop."""
     intent = state.get("intent")
     if intent == "NEGOTIATE_RESTOCK":
         return "negotiation_node"
     return "shelf_monitor_node"
 
+
 def route_after_negotiation(state: AgentState) -> str:
-    """Loop breaker: If deal secured -> execution_node; if max iterations reached -> output_formatter_node."""
     if state.get("agreed_deal"):
         return "execution_node"
-    
+
     cur_iter = state.get("iteration_count", 0)
     max_iter = state.get("max_iterations", 3)
     if cur_iter >= max_iter:
         return "output_formatter_node"
-        
+
     return "negotiation_node"
+
 
 # --- 4. Build StateGraph ---
 
 def build_veganflow_agent_graph():
     builder = StateGraph(AgentState)
-    
-    # Register Nodes
+
     builder.add_node("orchestrator_node", orchestrator_node)
     builder.add_node("shelf_monitor_node", shelf_monitor_node)
     builder.add_node("negotiation_node", negotiation_node)
     builder.add_node("execution_node", execution_node)
     builder.add_node("output_formatter_node", output_formatter_node)
-    
-    # Entry point
+
     builder.set_entry_point("orchestrator_node")
-    
-    # Edge from Orchestrator
+
     builder.add_conditional_edges(
         "orchestrator_node",
         route_after_orchestrator,
@@ -406,10 +391,9 @@ def build_veganflow_agent_graph():
             "negotiation_node": "negotiation_node"
         }
     )
-    
+
     builder.add_edge("shelf_monitor_node", "output_formatter_node")
-    
-    # Conditional Edge for Negotiation Loop (Max 3 iterations)
+
     builder.add_conditional_edges(
         "negotiation_node",
         route_after_negotiation,
@@ -419,11 +403,12 @@ def build_veganflow_agent_graph():
             "output_formatter_node": "output_formatter_node"
         }
     )
-    
+
     builder.add_edge("execution_node", "output_formatter_node")
     builder.add_edge("output_formatter_node", END)
-    
+
     memory = MemorySaver()
     return builder.compile(checkpointer=memory)
+
 
 veganflow_pipeline = build_veganflow_agent_graph()
