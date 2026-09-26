@@ -225,6 +225,108 @@ The sidebar contains 7 pre-built demo buttons for live demonstration.
 
 ---
 
+## 📸 Test Evidence — Live Screenshots
+
+### ✅ Test 1: Specific Product Query
+![Test 1 — Specific Product](screenshots/test1_specific_product.png)
+
+**Query:** `Check stock for Vegan Jumbo Shrimp`
+**Result:** 5 units, 1 unit/day velocity, OPTIMAL health status
+**Proves:** Entity extraction + specific product filter works correctly
+
+---
+
+### ✅ Test 2: Out of Stock Detection
+![Test 2 — Out of Stock](screenshots/test2_out_of_stock.png)
+
+**Query:** `Check my store inventory and find which items are out of stock`
+**Result:** No items fully out of stock, but Oat Barista Blend identified as critical risk (0.8 days remaining)
+**Proves:** Proactive reasoning — agent detects risks beyond the literal query
+
+---
+
+### ✅ Test 3: Expiring Soon Detection
+![Test 3 — Expiring Soon](screenshots/test3_expiring_soon.png)
+
+**Query:** `Which items are expiring soon?`
+**Result:** 3 items identified with exact expiry dates (Vanilla Coconut Yogurt, Cultured Truffle Brie, Artisanal Organic Tempeh)
+**Proves:** Waste prevention via expiry tracking
+
+---
+
+### ✅ Test 4: Small Order Auto-Execute
+![Test 4 — Small Order](screenshots/test4_small_order.png)
+
+**Query:** `Order 50 units of Oat Barista Blend`
+**Result:**
+- A2A Negotiation: $3.15/unit (savings $13.50)
+- Total PO Cost: $157.50 (< $500, no approval needed)
+- Executed automatically
+- New stock: 62 units
+**Proves:** Small orders execute autonomously without human intervention
+
+---
+
+### ✅ Test 5: Overstocking Guard
+![Test 5 — Overstocking Reduce](screenshots/test5_overstocking.png)
+
+**Query:** `Order 50 units of Almond Milk Unsweetened`
+**Result:**
+- Requested: 50 units
+- Actual Ordered: 15 units (reduced by Overstocking Guard)
+- Reason: Target (60) - Current (45) = 15 units max
+- New stock: 60 units
+**Proves:** System prevents over-ordering, protects capital
+
+---
+
+### ✅ Test 6: Budget Guard — Human Approval Required
+![Test 6 — Budget Guard](screenshots/test6_budget_guard.png)
+
+**Query:** `Order 200 units of Cultured Truffle Brie`
+**Result:**
+- Original order value: $1,656 (200 × $8.28)
+- Exceeds $500 threshold
+- Approval card displayed with Approve/Reject buttons
+- Order paused pending manager decision
+**Proves:** Large financial decisions require human approval
+
+---
+
+### ✅ Test 7: Approve Flow — Layered Defense
+![Test 7 — Approve Flow](screenshots/test7_approve_flow.png)
+
+**Action:** Manager clicks ✅ Approve on Test 6's pending order
+**Result:**
+- Requested Quantity: 200 units
+- Actual Ordered Quantity: 22 units (reduced by Overstocking Guard)
+- Reason: Target (30) - Previous (8) = 22 units max allowed
+- Total PO Cost: $182.16 (vs $1,656 requested)
+**Proves:** Even after approval, second layer prevents overstocking
+
+---
+
+### ✅ Test 8: Reject Flow
+![Test 8 — Reject Flow](screenshots/test8_reject_flow.png)
+
+**Action:** Manager clicks ❌ Reject on pending order
+**Result:** Order cancelled, no action taken, audit log entry created
+**Proves:** Manager can override agent decisions, full audit trail
+
+---
+
+### ✅ Test 9: Layered Defense — Budget + Overstocking
+![Test 9 — Layered Defense](screenshots/test9_layered_defense.png)
+
+**Query:** `Order 500 units of Oat Barista Blend` → Manager clicks ✅ Approve
+**Result:**
+- Requested: 500 units ($1,575)
+- Actual Ordered: 88 units ($277.20)
+- New Stock Level: 100 units (target hit)
+**Proves:** Two guards fire in sequence — Budget then Overstocking
+
+---
+
 ## 🖥️ Application Interface
 
 ### Tab 1: 🚀 Live Visual War Room
