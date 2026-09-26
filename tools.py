@@ -234,6 +234,7 @@ def execute_order(vendor_id: str, product_id: str, quantity: int, price: float) 
         "unit_price": price,
         "total_value": round(actual_qty * price, 2),
         "previous_stock": cur_stock,
+        "target_stock": target_stock,
         "updated_stock": new_stock,
         "guard_warning": guard_msg,
         "message": f"Successfully replenished {actual_qty} units of {name}. New stock: {new_stock} units."

@@ -458,7 +458,7 @@ with tab_warroom:
             st.success(f"🎉 **Autonomous Reorder Cycle Completed!** Restocked `{target_prod}` with **${rfq_res['cost_saved']:.2f} in autonomous cost savings**.")
 
 # -------------------------------------------------------------
-# TAB 2: MULTI-AGENT CHAT TERMINAL (WITH LIVE TOOL TRACE)
+# TAB 2: MULTI-AGENT CHAT TERMINAL (WITH HITL APPROVAL)
 # -------------------------------------------------------------
 with tab_chat:
     st.markdown("""
@@ -468,143 +468,171 @@ with tab_chat:
     </div>
     """, unsafe_allow_html=True)
 
+    # Initialize session states
     if "chat_history" not in st.session_state:
         st.session_state["chat_history"] = [
             {"role": "assistant", "content": "Hello! I am the **VeganFlow Store Manager Orchestrator**. How can I assist with store inventory, out-of-stock scans, or automated restock negotiations today?"}
         ]
 
+    if "pending_approval" not in st.session_state:
+        st.session_state["pending_approval"] = None
+
+    # Display chat history
     for msg in st.session_state["chat_history"]:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
+    # --- HUMAN-IN-THE-LOOP APPROVAL UI ---
+    if st.session_state["pending_approval"] is not None:
+        pending = st.session_state["pending_approval"]
+        deal = pending["deal"]
+        
+        st.markdown("---")
+        st.warning("⚠️ **Pending Order Approval Required**")
+        st.markdown(f"""
+        <div class="optimizer-card" style="border-left: 5px solid #f59e0b;">
+            <h4 style="margin-top:0; color:#0f172a;">📋 Order Details Awaiting Manager Approval</h4>
+            <ul style="color:#334155; font-size:0.95rem; line-height:1.8;">
+                <li><b>Product:</b> {deal['product_name']}</li>
+                <li><b>Vendor:</b> {deal['vendor_name']}</li>
+                <li><b>Quantity:</b> {deal['quantity']} units</li>
+                <li><b>Unit Price:</b> ${deal['unit_price']:.2f}</li>
+                <li><b>Total Value:</b> <b style="color:#dc2626;">${deal['total_cost']:.2f}</b></li>
+                <li><b>Delivery Window:</b> {deal.get('delivery_days', 'N/A')} days</li>
+            </ul>
+            <p style="color:#64748b; font-size:0.85rem; margin-top:10px;">
+                <i>This order exceeds the $500.00 autonomous threshold. Manager confirmation is required before execution.</i>
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("✅ Approve Order", type="primary", use_container_width=True, key="approve_btn"):
+                # Execute the order
+                exec_res = execute_order(
+                    vendor_id=deal["vendor_id"],
+                    product_id=deal["product_id"],
+                    quantity=deal["quantity"],
+                    price=deal["unit_price"]
+                )
+                
+                if exec_res.get("success"):
+                    req_qty = deal.get("quantity", exec_res["ordered_quantity"])
+                    actual_qty = exec_res["ordered_quantity"]
+                    cur_stock = exec_res.get("previous_stock", 0)
+                    target_stock = exec_res.get("target_stock", cur_stock + actual_qty)
+                    max_allowed = target_stock - cur_stock
+
+                    if req_qty > actual_qty:
+                        qty_lines = (
+                            f"- **Requested Quantity:** {req_qty} units\n"
+                            f"- **Actual Ordered Quantity:** {actual_qty} units (reduced by Overstocking Guard)\n"
+                            f"- **Reason:** Target stock ({target_stock}) - Current stock ({cur_stock}) = {max_allowed} units maximum allowed\n"
+                        )
+                    else:
+                        qty_lines = (
+                            f"- **Requested Quantity:** {req_qty} units\n"
+                            f"- **Actual Ordered Quantity:** {actual_qty} units\n"
+                        )
+
+                    success_msg = (
+                        f"✅ **Order Approved & Executed Successfully!**\n\n"
+                        f"{qty_lines}"
+                        f"- **Unit Price:** \\${deal['unit_price']:.2f}\n"
+                        f"- **Total PO Cost:** \\${exec_res['total_value']:.2f}\n"
+                        f"- **New Stock Level:** {exec_res['updated_stock']} units\n"
+                        f"- **POS Status:** ✅ Successfully updated in database"
+                    )
+                    st.session_state["chat_history"].append({"role": "assistant", "content": success_msg})
+                    
+                    # Audit log
+                    try:
+                        with open("approval_log.txt", "a", encoding="utf-8") as f:
+                            f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} | APPROVED | {deal['product_name']} | {actual_qty} units @ ${deal['unit_price']:.2f} | Total: ${exec_res['total_value']:.2f} | New Stock: {exec_res['updated_stock']}\n")
+                    except Exception as e:
+                        pass
+                    
+                    st.session_state["pending_approval"] = None
+                    st.success("✅ Order approved and executed successfully!")
+                    time.sleep(1)
+                    st.rerun()
+                else:
+                    st.error(f"❌ Execution failed: {exec_res.get('message')}")
+        
+        with col2:
+            if st.button("❌ Reject Order", use_container_width=True, key="reject_btn"):
+                reject_msg = (
+                    f"❌ **Order Rejected by Manager**\n\n"
+                    f"The order for **{deal['quantity']} units** of **{deal['product_name']}** "
+                    f"(Total: **${deal['total_cost']:.2f}**) has been rejected. No action taken."
+                )
+                st.session_state["chat_history"].append({"role": "assistant", "content": reject_msg})
+                
+                # Audit log
+                try:
+                    with open("approval_log.txt", "a", encoding="utf-8") as f:
+                        f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} | REJECTED | {deal['product_name']} | {deal['quantity']} units @ ${deal['unit_price']:.2f} | Total: ${deal['total_cost']:.2f}\n")
+                except Exception as e:
+                    pass
+                
+                st.session_state["pending_approval"] = None
+                st.warning("❌ Order rejected. No action taken.")
+                time.sleep(1)
+                st.rerun()
+
+    # --- CHAT INPUT ---
     user_query = st.chat_input("Ask: 'Check my store inventory and find which items are out of stock'...")
     if user_query:
         st.session_state["chat_history"].append({"role": "user", "content": user_query})
         with st.chat_message("user"):
             st.markdown(user_query)
 
-        # Conversational approval check if deal is pending
-        clean_q = user_query.strip().lower()
-        if st.session_state.get("pending_approval") and any(k in clean_q for k in ["approve", "confirm", "yes", "authorize", "haan", "kar do"]):
-            item = st.session_state["pending_approval"]
-            deal = item["deal"]
-            exec_res = execute_order(
-                vendor_id=deal.get("vendor_id", "V-EARTH"),
-                product_id=deal.get("product_id", "P-OAT1"),
-                quantity=deal.get("quantity", 100),
-                price=deal.get("unit_price", 3.42)
-            )
-            warning = f"\n\n*Note: {exec_res.get('guard_warning')}*" if exec_res.get("guard_warning") else ""
-            reply = (
-                f"✅ **Purchase Order Authorized & Executed by Manager!**\n\n"
-                f"- **Product:** `{deal['product_name']}`\n"
-                f"- **Vendor:** `{deal['vendor_name']}`\n"
-                f"- **Quantity Purchased:** `{exec_res.get('ordered_quantity', deal['quantity'])} units`\n"
-                f"- **Negotiated Price:** `${deal['unit_price']:.2f} / unit`\n"
-                f"- **Total PO Cost:** `${exec_res.get('total_value', deal['total_cost']):.2f}`\n"
-                f"- **Inventory Status:** Successfully updated in POS. New stock: **{exec_res.get('updated_stock')} units**.{warning}"
-            )
-            with st.chat_message("assistant"):
-                st.markdown(reply)
+        with st.chat_message("assistant"):
+            with st.status("🧠 **Orchestrator Executing Multi-Agent Graph...**", expanded=True) as status_box:
+                status_box.write("🛠️ **Executing Tool:** `orchestrator_node` (Intent Classification)")
+                time.sleep(0.3)
+                
+                # Execute LangGraph Pipeline
+                init_state = {
+                    "user_query": user_query,
+                    "intent": "CHECK_STOCK",
+                    "filter_type": "OUT_OF_STOCK",
+                    "target_product": None,
+                    "target_quantity": 100,
+                    "inventory_results": [],
+                    "vendor_candidates": [],
+                    "current_vendor_index": 0,
+                    "iteration_count": 0,
+                    "max_iterations": 3,
+                    "negotiation_log": [],
+                    "agreed_deal": None,
+                    "execution_result": None,
+                    "human_approval_needed": False,
+                    "final_response": "",
+                    "trace_steps": []
+                }
+                
+                config = {"configurable": {"thread_id": f"chat_{int(time.time())}"}}
+                result = veganflow_pipeline.invoke(init_state, config=config)
+                
+                for step in result.get("trace_steps", []):
+                    status_box.write(f"⚙️ **Step:** {step}")
+                    time.sleep(0.2)
+                    
+                status_box.update(label="✅ **Multi-Agent Task Completed!**", state="complete", expanded=False)
+
+            reply = result.get("final_response", "Request completed.")
+            st.markdown(reply)
             st.session_state["chat_history"].append({"role": "assistant", "content": reply})
-            st.session_state["pending_approval"] = None
-        else:
-            with st.chat_message("assistant"):
-                with st.status("🧠 **Orchestrator Executing Multi-Agent Graph...**", expanded=True) as status_box:
-                    status_box.write("🛠️ **Executing Tool:** `orchestrator_node` (Intent Classification)")
-                    time.sleep(0.3)
-                    
-                    # Execute LangGraph Pipeline
-                    init_state = {
-                        "user_query": user_query,
-                        "intent": "CHECK_STOCK",
-                        "filter_type": "OUT_OF_STOCK",
-                        "target_product": None,
-                        "target_quantity": 100,
-                        "inventory_results": [],
-                        "vendor_candidates": [],
-                        "current_vendor_index": 0,
-                        "iteration_count": 0,
-                        "max_iterations": 3,
-                        "negotiation_log": [],
-                        "agreed_deal": None,
-                        "execution_result": None,
-                        "human_approval_needed": False,
-                        "final_response": "",
-                        "trace_steps": []
-                    }
-                    
-                    config = {"configurable": {"thread_id": f"chat_{int(time.time())}"}}
-                    result = veganflow_pipeline.invoke(init_state, config=config)
-                    
-                    for step in result.get("trace_steps", []):
-                        status_box.write(f"⚙️ **Step:** {step}")
-                        time.sleep(0.2)
-                        
-                    status_box.update(label="✅ **Multi-Agent Task Completed!**", state="complete", expanded=False)
-
-                reply = result.get("final_response", "Request completed.")
-                st.markdown(reply)
-                st.session_state["chat_history"].append({"role": "assistant", "content": reply})
-
-                # Task 1: Store Pending Approval in Session State
-                if result.get("human_approval_needed") or "human approval required" in reply.lower():
-                    st.session_state["pending_approval"] = {
-                        "deal": result.get("agreed_deal"),
-                        "user_query": user_query,
-                        "timestamp": time.time()
-                    }
-
-    # Render Interactive HITL Action Component if pending approval exists
-    if st.session_state.get("pending_approval"):
-        item = st.session_state["pending_approval"]
-        deal = item.get("deal")
-        if deal:
-            st.markdown(f"""
-            <div style="background: #fffbeb; border: 2px solid #f59e0b; border-radius: 12px; padding: 16px; margin: 14px 0;">
-                <h4 style="margin: 0 0 8px 0; color: #92400e; display: flex; align-items: center; gap: 8px;">
-                    🛑 Human-in-the-Loop Approval Required
-                </h4>
-                <p style="color: #78350f; font-size: 0.95rem; margin-bottom: 12px;">
-                    This order exceeds the <b>$500.00</b> autonomous safety threshold and requires Store Manager authorization:
-                </p>
-                <div style="background: white; border-radius: 8px; padding: 12px; border: 1px solid #fde68a; margin-bottom: 12px; font-size: 0.92rem; color: #1e293b; line-height: 1.6;">
-                    • <b>Product SKU:</b> {deal.get('product_name')} ({deal.get('product_id')})<br>
-                    • <b>Negotiated Vendor:</b> {deal.get('vendor_name')}<br>
-                    • <b>Requested Volume:</b> <b>{deal.get('quantity')} units</b><br>
-                    • <b>Negotiated Unit Price:</b> <b>${deal.get('unit_price'):.2f} / unit</b><br>
-                    • <b>Total Purchase Value:</b> <span style="color:#b91c1c; font-weight:800; font-size:1.05rem;">${deal.get('total_cost'):.2f}</span>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-            col_appr, col_rej = st.columns([1, 1])
-            with col_appr:
-                if st.button("✅ Authorize & Commit Purchase Order", type="primary", use_container_width=True, key="btn_approve_deal"):
-                    exec_res = execute_order(
-                        vendor_id=deal.get("vendor_id", "V-EARTH"),
-                        product_id=deal.get("product_id", "P-OAT1"),
-                        quantity=deal.get("quantity", 100),
-                        price=deal.get("unit_price", 3.42)
-                    )
-                    warning = f"\n\n*Note: {exec_res.get('guard_warning')}*" if exec_res.get("guard_warning") else ""
-                    conf_msg = (
-                        f"✅ **Purchase Order Authorized & Executed by Manager!**\n\n"
-                        f"- **Product:** `{deal['product_name']}`\n"
-                        f"- **Vendor:** `{deal['vendor_name']}`\n"
-                        f"- **Quantity Purchased:** `{exec_res.get('ordered_quantity', deal['quantity'])} units`\n"
-                        f"- **Negotiated Price:** `${deal['unit_price']:.2f} / unit`\n"
-                        f"- **Total PO Cost:** `${exec_res.get('total_value', deal['total_cost']):.2f}`\n"
-                        f"- **Inventory Status:** Successfully updated in POS. New stock: **{exec_res.get('updated_stock')} units**.{warning}"
-                    )
-                    st.session_state["chat_history"].append({"role": "assistant", "content": conf_msg})
-                    st.session_state["pending_approval"] = None
-                    st.rerun()
-            with col_rej:
-                if st.button("❌ Reject / Cancel Order", use_container_width=True, key="btn_reject_deal"):
-                    rej_msg = f"🚫 **Purchase Order Cancelled by Manager.**\nThe pending order for `{deal['quantity']} units` of `{deal['product_name']}` has been rejected."
-                    st.session_state["chat_history"].append({"role": "assistant", "content": rej_msg})
-                    st.session_state["pending_approval"] = None
-                    st.rerun()
+            
+            # --- CHECK IF HUMAN APPROVAL IS NEEDED ---
+            if result.get("human_approval_needed") and result.get("agreed_deal"):
+                st.session_state["pending_approval"] = {
+                    "deal": result["agreed_deal"],
+                    "timestamp": time.time()
+                }
+                st.rerun()
 
 # -------------------------------------------------------------
 # TAB 3: LIVE STORE INVENTORY & POS
