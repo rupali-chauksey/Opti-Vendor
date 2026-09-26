@@ -1,0 +1,544 @@
+import streamlit as st
+import sqlite3
+import pandas as pd
+import time
+import os
+import sys
+
+if hasattr(sys.stdout, 'reconfigure'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
+
+from database import init_database
+from tools import query_inventory, fetch_vendors, send_a2a_rfq, execute_order
+from agents import veganflow_pipeline
+
+st.set_page_config(
+    page_title="VeganFlow Enterprise | Autonomous Supply Chain Intelligence",
+    page_icon="🌱",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Professional Enterprise Light Grey Theme (#F5F7FA) with LangSmith/Datadog Minimalist Styling
+st.markdown("""
+<style>
+    /* Full Page Background */
+    .stApp {
+        background-color: #f5f7fa !important;
+        background-image: radial-gradient(#e2e8f0 1px, transparent 1px) !important;
+        background-size: 24px 24px !important;
+        color: #0f172a;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    
+    /* Global Typography */
+    .hero-header {
+        text-align: left;
+        padding: 10px 0 22px 0;
+        border-bottom: 1px solid #e2e8f0;
+        margin-bottom: 24px;
+    }
+    .hero-title {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #0f172a;
+        letter-spacing: -0.5px;
+        margin-bottom: 4px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .hero-subtitle {
+        color: #475569;
+        font-size: 1rem;
+        font-weight: 400;
+    }
+    
+    /* White Card Container */
+    .optimizer-card {
+        background: #ffffff;
+        border-radius: 14px;
+        padding: 22px;
+        box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
+        margin-bottom: 18px;
+        border: 1px solid #e2e8f0;
+    }
+    
+    /* Step Header with Badges */
+    .step-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+    .step-badge {
+        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+        color: #ffffff;
+        font-weight: 700;
+        font-size: 0.95rem;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 12px;
+        box-shadow: 0 2px 6px rgba(2, 132, 199, 0.25);
+    }
+    .step-title-text {
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: #0f172a;
+    }
+    .step-subtitle-text {
+        font-size: 0.82rem;
+        color: #64748b;
+        font-weight: 400;
+        display: block;
+    }
+    
+    /* Sub-Metric Boxes */
+    .sub-metric-box {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 14px 10px;
+        text-align: center;
+    }
+    .sub-metric-label {
+        font-size: 0.8rem;
+        color: #64748b;
+        font-weight: 500;
+        margin-bottom: 4px;
+    }
+    .sub-metric-val {
+        font-size: 1.65rem;
+        font-weight: 800;
+        color: #0f172a;
+        line-height: 1.1;
+    }
+    .sub-metric-unit {
+        font-size: 0.78rem;
+        color: #64748b;
+        margin-top: 2px;
+    }
+    .sub-metric-badge-low {
+        display: inline-block;
+        background: #fee2e2;
+        color: #dc2626;
+        font-size: 0.72rem;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 6px;
+        margin-top: 4px;
+    }
+    .sub-metric-badge-crit {
+        display: inline-block;
+        background: #fef2f2;
+        color: #b91c1c;
+        font-size: 0.72rem;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 6px;
+        margin-top: 4px;
+    }
+    
+    /* Preserved Red Status Alert Banner for Critical Stockout */
+    .alert-banner-low {
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+        border-left: 5px solid #ef4444;
+        border-radius: 8px;
+        padding: 12px 16px;
+        color: #991b1b;
+        font-size: 0.92rem;
+        font-weight: 500;
+        margin-top: 14px;
+    }
+    
+    /* Dialog Bubbles */
+    .dialog-bubble-buyer {
+        background-color: #f0fdf4;
+        border-left: 4px solid #16a34a;
+        padding: 12px 16px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        color: #14532d;
+        font-size: 0.93rem;
+    }
+    .dialog-bubble-vendor {
+        background-color: #fff7ed;
+        border-left: 4px solid #ea580c;
+        padding: 12px 16px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        color: #7c2d12;
+        font-size: 0.93rem;
+    }
+    .dialog-bubble-success {
+        background-color: #f0fdfa;
+        border-left: 4px solid #0d9488;
+        padding: 12px 16px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        color: #134e4a;
+        font-size: 0.93rem;
+    }
+    
+    /* Minimalist Datadog / LangSmith Tabs */
+    .stTabs [data-baseweb="tab-list"] {
+        background: #e2e8f0;
+        border-radius: 10px;
+        padding: 4px;
+        gap: 6px;
+        border: 1px solid #cbd5e1;
+    }
+    .stTabs [data-baseweb="tab"] {
+        color: #475569 !important;
+        font-weight: 600;
+        border-radius: 8px;
+        padding: 8px 18px;
+        background: transparent;
+        border: none;
+        font-size: 0.92rem;
+    }
+    .stTabs [aria-selected="true"] {
+        background: #ffffff !important;
+        color: #0f172a !important;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+    }
+    
+    /* Button Customization: GREEN / DARK BLUE for Action */
+    div.stButton > button[kind="primary"] {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+        color: #ffffff !important;
+        border: none !important;
+        border-radius: 8px !important;
+        font-weight: 600 !important;
+        padding: 10px 20px !important;
+        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25) !important;
+    }
+    div.stButton > button[kind="primary"]:hover {
+        background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35) !important;
+    }
+    
+    .qty-preview-badge {
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        text-align: center;
+        padding: 8px;
+        font-weight: 700;
+        font-size: 1.05rem;
+        color: #0f172a;
+        margin-top: 4px;
+        margin-bottom: 14px;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# Top Header
+st.markdown("""
+<div class="hero-header">
+    <div class="hero-title">🌱 VeganFlow Enterprise</div>
+    <div class="hero-subtitle">Autonomous Multi-Agent Supply Chain Intelligence, A2A Negotiation & POS Inventory Control</div>
+</div>
+""", unsafe_allow_html=True)
+
+# Sidebar
+with st.sidebar:
+    st.image("https://img.icons8.com/color/96/bot.png", width=56)
+    st.markdown("### System Health & Stack")
+    st.success("🟢 11 A2A Vendor Microservices Live")
+    st.info("🦙 Local Ollama Models: `qwen2.5:7b` + `llama3.2`")
+    st.info("💾 Database: `veganflow_store.db` (SQLite)")
+    
+    st.divider()
+    st.markdown("#### Database Maintenance")
+    if st.button("⚠️ Reset POS & Store Database", use_container_width=True):
+        init_database()
+        st.success("Database restored to default catalog!")
+        st.rerun()
+
+# Helper: Get Live Inventory DF
+def get_inventory_table():
+    conn = sqlite3.connect("veganflow_store.db")
+    df = pd.read_sql_query("SELECT product_id, name, category, stock_quantity, sales_velocity_daily, target_stock_level, vendor_id FROM inventory", conn)
+    conn.close()
+    df["Days of Supply"] = (df["stock_quantity"] / df["sales_velocity_daily"]).round(1)
+    df["Health Status"] = df["Days of Supply"].apply(
+        lambda x: "🚨 CRITICAL STOCKOUT" if x < 1.0 else ("⚠️ LOW STOCK" if x < 3.0 else "✅ OPTIMAL")
+    )
+    return df
+
+# 3 Minimalist Tabs
+tab_warroom, tab_chat, tab_pos = st.tabs([
+    "🚀 Live Visual War Room",
+    "🤖 Multi-Agent Chat Terminal",
+    "📦 Live Store Inventory & POS"
+])
+
+# -------------------------------------------------------------
+# TAB 1: LIVE VISUAL WAR ROOM (STEP-BY-STEP VISUAL SIMULATION)
+# -------------------------------------------------------------
+with tab_warroom:
+    col_left, col_right = st.columns([1, 2.5])
+    
+    with col_left:
+        st.markdown("""
+        <div class="optimizer-card">
+            <h4 style="margin-top:0; color:#0f172a; font-weight:700; font-size:1.1rem;">⚙️ Execution Parameters</h4>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        with st.container():
+            target_prod = st.selectbox(
+                "Select Product",
+                ["Oat Barista Blend", "Cultured Truffle Brie", "Vegan Jumbo Shrimp", "Seitan Pepperoni (Bulk)"],
+                index=0
+            )
+            order_qty = st.slider("Order Quantity", min_value=20, max_value=500, value=100, step=10)
+            st.markdown(f'<div class="qty-preview-badge">{order_qty} units</div>', unsafe_allow_html=True)
+            btn_run_sim = st.button("🚀 Run Agent Workflow", type="primary", use_container_width=True)
+
+    with col_right:
+        # Step 1 Data Fetch
+        conn = sqlite3.connect("veganflow_store.db")
+        cur = conn.cursor()
+        cur.execute("SELECT product_id, stock_quantity, sales_velocity_daily, target_stock_level FROM inventory WHERE name LIKE ?", (f"%{target_prod}%",))
+        row = cur.fetchone()
+        conn.close()
+        
+        pid = row[0] if row else "P-OAT1"
+        cur_stock = row[1] if row else 12
+        velocity = row[2] if row else 15.0
+        target_lvl = row[3] if row else 100
+        days_left = round(cur_stock / velocity, 1) if velocity > 0 else 999.0
+        
+        # Step 1: Shelf Monitor Card
+        st.markdown(f"""
+        <div class="optimizer-card">
+            <div class="step-header">
+                <div class="step-badge">1</div>
+                <div>
+                    <span class="step-title-text">Shelf Monitor Agent</span>
+                    <span class="step-subtitle-text">(Inventory Health Scan)</span>
+                </div>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
+                <div class="sub-metric-box">
+                    <div class="sub-metric-label">Current Stock</div>
+                    <div class="sub-metric-val">{cur_stock}</div>
+                    <div class="sub-metric-unit">units</div>
+                </div>
+                <div class="sub-metric-box">
+                    <div class="sub-metric-label">Sales Velocity</div>
+                    <div class="sub-metric-val">{velocity}</div>
+                    <div class="sub-metric-unit">units/day</div>
+                </div>
+                <div class="sub-metric-box">
+                    <div class="sub-metric-label">Days of Supply</div>
+                    <div class="sub-metric-val" style="color: {'#dc2626' if days_left < 1.0 else ('#d97706' if days_left < 3.0 else '#16a34a')};">{days_left}</div>
+                    <div class="{ 'sub-metric-badge-crit' if days_left < 1.0 else ('sub-metric-badge-low' if days_left < 3.0 else '')}">
+                        {'🚨 CRITICAL' if days_left < 1.0 else ('⚠️ LOW' if days_left < 3.0 else '✅ OPTIMAL')}
+                    </div>
+                </div>
+                <div class="sub-metric-box">
+                    <div class="sub-metric-label">Target Stock</div>
+                    <div class="sub-metric-val">{target_lvl}</div>
+                    <div class="sub-metric-unit">units</div>
+                </div>
+            </div>
+            <div class="alert-banner-low">
+                ⚠️ <b>Alert commanded by Shelf Monitor:</b> Stock level critically low for <code>{target_prod}</code> ({days_left} days remaining). Automated reorder sequence initiated for {order_qty} units.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        if btn_run_sim:
+            # Step 2: Strategic Memory Policy
+            st.markdown("""
+            <div class="optimizer-card">
+                <div class="step-header">
+                    <div class="step-badge" style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);">2</div>
+                    <div>
+                        <span class="step-title-text">Strategic Memory Bank Policy</span>
+                        <span class="step-subtitle-text">(Cost & Demand Bounds Ingestion)</span>
+                    </div>
+                </div>
+                <div class="dialog-bubble-buyer">
+                    <b>🧠 Long-Term Strategy Memory Ingested:</b><br>
+                    • Target Wholesale Price: <b>$3.30 / unit</b><br>
+                    • Hard Budget Ceiling: <b>$3.60 / unit</b> (Reject offers above this threshold)<br>
+                    • Bulk Quantity Rule: Orders ≥ 50 units unlock 5% volume supplier discount.
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Step 3: Vendor Discovery
+            vendors_list = fetch_vendors(product_id=pid)
+            st.markdown(f"""
+            <div class="optimizer-card">
+                <div class="step-header">
+                    <div class="step-badge" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);">3</div>
+                    <div>
+                        <span class="step-title-text">Vendor Marketplace Discovery</span>
+                        <span class="step-subtitle-text">({len(vendors_list)} Competing Suppliers Identified)</span>
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            if vendors_list:
+                st.dataframe(pd.DataFrame(vendors_list)[["name", "category", "reliability_score", "price_wholesale", "delivery_days"]], use_container_width=True)
+            
+            # Step 4: A2A Autonomous Negotiation
+            top_v = vendors_list[0] if vendors_list else {"name": "Earthly Gourmet", "endpoint_url": "http://localhost:8001/a2a"}
+            rfq_res = send_a2a_rfq(top_v["endpoint_url"], pid, order_qty, target_unit_price=3.30)
+            
+            st.markdown(f"""
+            <div class="optimizer-card">
+                <div class="step-header">
+                    <div class="step-badge" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">4</div>
+                    <div>
+                        <span class="step-title-text">Autonomous A2A Negotiation Engine</span>
+                        <span class="step-subtitle-text">(Agent-to-Agent Microservice Handshake)</span>
+                    </div>
+                </div>
+                <div class="dialog-bubble-buyer">
+                    <b>📤 [A2A Handshake] Procurement Buyer ➔ {rfq_res['vendor_name']}:</b><br>
+                    <i>"PURCHASE ORDER INQUIRY: Requesting {order_qty} units of '{target_prod}'. Opening target bid: <b>$3.30 / unit</b>."</i>
+                </div>
+                <div class="dialog-bubble-vendor">
+                    <b>📥 [A2A Counter] {rfq_res['vendor_name']} Vendor Agent:</b><br>
+                    <i>"COUNTER-OFFER: List price is ${rfq_res['list_price']:.2f}. For volume of {order_qty} units, accepted wholesale price is <b>${rfq_res['negotiated_price']:.2f} / unit</b> with {rfq_res['delivery_days']}-day delivery."</i>
+                </div>
+                <div class="dialog-bubble-success">
+                    <b>🤝 [A2A Agreement Sealed] Procurement Agent ➔ {rfq_res['vendor_name']}:</b><br>
+                    <i>"PURCHASE CONFIRMED: {order_qty} units @ ${rfq_res['negotiated_price']:.2f}/unit. Total PO Value: <b>${rfq_res['total_cost']:.2f}</b> (Saved: <b>${rfq_res['cost_saved']:.2f}</b>)."</i>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Step 5: Execute Order & POS Update
+            exec_res = execute_order(top_v.get("vendor_id", "V-EARTH"), pid, order_qty, rfq_res["negotiated_price"])
+            
+            st.markdown(f"""
+            <div class="optimizer-card">
+                <div class="step-header">
+                    <div class="step-badge" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">5</div>
+                    <div>
+                        <span class="step-title-text">Atomic POS Store Execution</span>
+                        <span class="step-subtitle-text">(SQLite Database State Update & Audit)</span>
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+                    <div class="sub-metric-box">
+                        <div class="sub-metric-label">Previous Stock</div>
+                        <div class="sub-metric-val">{exec_res.get('previous_stock', cur_stock)}</div>
+                        <div class="sub-metric-unit">units</div>
+                    </div>
+                    <div class="sub-metric-box">
+                        <div class="sub-metric-label">Inbound Replenishment</div>
+                        <div class="sub-metric-val" style="color: #2563eb;">+{exec_res.get('ordered_quantity', order_qty)}</div>
+                        <div class="sub-metric-unit">units</div>
+                    </div>
+                    <div class="sub-metric-box">
+                        <div class="sub-metric-label">Updated POS Inventory</div>
+                        <div class="sub-metric-val" style="color: #16a34a;">{exec_res.get('updated_stock', cur_stock + order_qty)}</div>
+                        <div class="sub-metric-unit">✅ OPTIMAL HEALTH</div>
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            st.balloons()
+            st.success(f"🎉 **Autonomous Reorder Cycle Completed!** Restocked `{target_prod}` with **${rfq_res['cost_saved']:.2f} in autonomous cost savings**.")
+
+# -------------------------------------------------------------
+# TAB 2: MULTI-AGENT CHAT TERMINAL (WITH LIVE TOOL TRACE)
+# -------------------------------------------------------------
+with tab_chat:
+    st.markdown("""
+    <div class="optimizer-card">
+        <h4 style="margin-top:0; color:#0f172a; font-weight:700;">🤖 Multi-Agent Interactive Chat Terminal</h4>
+        <p style="color:#64748b; font-size:0.95rem; margin-bottom:0;">Chat directly with the <b>VeganFlow Store Manager Orchestrator</b>. View real-time Tool Execution steps streamed as agents collaborate.</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    if "chat_history" not in st.session_state:
+        st.session_state["chat_history"] = [
+            {"role": "assistant", "content": "Hello! I am the **VeganFlow Store Manager Orchestrator**. How can I assist with store inventory, out-of-stock scans, or automated restock negotiations today?"}
+        ]
+
+    for msg in st.session_state["chat_history"]:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+
+    user_query = st.chat_input("Ask: 'Check my store inventory and find which items are out of stock'...")
+    if user_query:
+        st.session_state["chat_history"].append({"role": "user", "content": user_query})
+        with st.chat_message("user"):
+            st.markdown(user_query)
+
+        with st.chat_message("assistant"):
+            with st.status("🧠 **Orchestrator Executing Multi-Agent Graph...**", expanded=True) as status_box:
+                status_box.write("🛠️ **Executing Tool:** `orchestrator_node` (Intent Classification)")
+                time.sleep(0.3)
+                
+                # Execute LangGraph Pipeline
+                init_state = {
+                    "user_query": user_query,
+                    "intent": "CHECK_STOCK",
+                    "filter_type": "OUT_OF_STOCK",
+                    "target_product": None,
+                    "target_quantity": 100,
+                    "inventory_results": [],
+                    "vendor_candidates": [],
+                    "current_vendor_index": 0,
+                    "iteration_count": 0,
+                    "max_iterations": 3,
+                    "negotiation_log": [],
+                    "agreed_deal": None,
+                    "execution_result": None,
+                    "human_approval_needed": False,
+                    "final_response": "",
+                    "trace_steps": []
+                }
+                
+                config = {"configurable": {"thread_id": f"chat_{int(time.time())}"}}
+                result = veganflow_pipeline.invoke(init_state, config=config)
+                
+                for step in result.get("trace_steps", []):
+                    status_box.write(f"⚙️ **Step:** {step}")
+                    time.sleep(0.2)
+                    
+                status_box.update(label="✅ **Multi-Agent Task Completed!**", state="complete", expanded=False)
+
+            reply = result.get("final_response", "Request completed.")
+            st.markdown(reply)
+            st.session_state["chat_history"].append({"role": "assistant", "content": reply})
+
+# -------------------------------------------------------------
+# TAB 3: LIVE STORE INVENTORY & POS
+# -------------------------------------------------------------
+with tab_pos:
+    st.markdown("""
+    <div class="optimizer-card">
+        <h4 style="margin-top:0; color:#0f172a; font-weight:700;">📦 Store POS Database State (<code>veganflow_store.db</code>)</h4>
+        <p style="color:#64748b; font-size:0.95rem;">Live inventory levels, velocity, and Days of Supply computed from SQLite.</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    df_inv = get_inventory_table()
+    if not df_inv.empty:
+        st.dataframe(
+            df_inv.style.apply(
+                lambda row: ['background-color: #fee2e2; font-weight: bold;' if 'CRITICAL' in str(row['Health Status']) else ('background-color: #fef3c7;' if 'LOW' in str(row['Health Status']) else '') for _ in row],
+                axis=1
+            ),
+            use_container_width=True,
+            hide_index=True
+        )

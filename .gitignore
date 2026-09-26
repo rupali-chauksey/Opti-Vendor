@@ -1,0 +1,29 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment & Secret files
+.env
+*.env
+
+# Database files
+*.db
+*.sqlite3
+
+# Logs & Traces
+*.log
+agent_trace.log
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# IDE & Editor folders
+.vscode/
+.idea/
+.DS_Store
+
+# Temporary files
+scratch/
