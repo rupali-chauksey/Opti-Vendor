@@ -9,7 +9,7 @@ if hasattr(sys.stdout, 'reconfigure'):
     except Exception:
         pass
 
-DB_PATH = "veganflow_store.db"
+DB_PATH = "optivendor_store.db"
 
 def init_database(db_path: str = DB_PATH):
     """

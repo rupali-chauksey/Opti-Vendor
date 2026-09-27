@@ -384,7 +384,7 @@ optivendor/
 ├── README.md                   # You are here
 ├── agent_trace.log             # Auto-generated logs
 ├── approval_log.txt            # Approval audit trail
-├── veganflow_store.db          # SQLite database
+├── optivendor_store.db          # SQLite database
 └── screenshots/                # 9 test screenshots
 ```
 

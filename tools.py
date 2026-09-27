@@ -2,7 +2,7 @@ import sqlite3
 from typing import List, Dict, Any, Optional
 import datetime
 
-DB_PATH = "veganflow_store.db"
+DB_PATH = "optivendor_store.db"
 
 def query_inventory(filter_type: str = "OUT_OF_STOCK", product_name: Optional[str] = None) -> List[Dict[str, Any]]:
     """

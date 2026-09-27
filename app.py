@@ -17,7 +17,7 @@ from agents import veganflow_pipeline
 
 # Auto-initialize SQLite database on Cloud Deployment if missing
 try:
-    conn = sqlite3.connect("veganflow_store.db")
+    conn = sqlite3.connect("optivendor_store.db")
     cur = conn.cursor()
     cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='inventory'")
     has_table = cur.fetchone()
@@ -57,7 +57,7 @@ with st.sidebar:
     st.markdown("### System Health & Stack")
     st.success("🟢 11 A2A Vendor Microservices Live")
     st.info("🦙 Local Ollama Models: `qwen2.5:7b` + `llama3.2`")
-    st.info("💾 Database: `veganflow_store.db` (SQLite)")
+    st.info("💾 Database: `optivendor_store.db` (SQLite)")
 
 is_dark_mode = st.session_state.get("app_theme") == "Dark"
 
@@ -663,7 +663,7 @@ with st.sidebar:
 
 # Helper: Get Live Inventory DF
 def get_inventory_table():
-    conn = sqlite3.connect("veganflow_store.db")
+    conn = sqlite3.connect("optivendor_store.db")
     df = pd.read_sql_query("SELECT product_id, name, category, stock_quantity, sales_velocity_daily, target_stock_level, vendor_id FROM inventory", conn)
     conn.close()
     df["Days of Supply"] = (df["stock_quantity"] / df["sales_velocity_daily"]).round(1)
@@ -704,7 +704,7 @@ with tab_warroom:
 
     with col_right:
         # Step 1 Data Fetch
-        conn = sqlite3.connect("veganflow_store.db")
+        conn = sqlite3.connect("optivendor_store.db")
         cur = conn.cursor()
         cur.execute("SELECT product_id, stock_quantity, sales_velocity_daily, target_stock_level FROM inventory WHERE name LIKE ?", (f"%{target_prod}%",))
         row = cur.fetchone()
@@ -958,7 +958,7 @@ with tab_chat:
                     actual_qty = exec_res["ordered_quantity"]
                     cur_stock = exec_res.get("previous_stock", 0)
                     
-                    conn = sqlite3.connect("veganflow_store.db")
+                    conn = sqlite3.connect("optivendor_store.db")
                     cur = conn.cursor()
                     cur.execute("SELECT target_stock_level FROM inventory WHERE product_id = ?", (deal["product_id"],))
                     row = cur.fetchone()
