@@ -351,32 +351,73 @@ if is_dark_mode:
             color: #f8fafc !important;
         }
         
-        /* Status Widget / Expander Dark Mode Fix */
+        /* Global Code Tag High Contrast Fix for Dark Mode */
+        code, 
+        .stMarkdown code, 
+        div[data-testid="stChatMessage"] code, 
+        details[data-testid="stExpander"] code, 
+        div[data-testid="stStatusWidget"] code {
+            background-color: #1e293b !important;
+            color: #38bdf8 !important;
+            border: 1px solid #334155 !important;
+            padding: 2px 6px !important;
+            border-radius: 4px !important;
+            font-family: monospace !important;
+        }
+        
+        /* Status Widget & Expander Dark Mode Fix (Prevents White Bar on Hover/Open) */
         div[data-testid="stStatusWidget"], details[data-testid="stExpander"], div[data-testid="stExpander"] {
-            background-color: #0b1329 !important;
+            background-color: #0d1527 !important;
             border: 1px solid #1e293b !important;
             border-radius: 10px !important;
             color: #f8fafc !important;
             margin-bottom: 12px !important;
+            overflow: hidden !important;
         }
         div[data-testid="stStatusWidget"] *, details[data-testid="stExpander"] * {
-            color: #cbd5e1 !important;
+            color: #e2e8f0 !important;
         }
-        div[data-testid="stStatusWidget"] summary, details[data-testid="stExpander"] summary {
+        div[data-testid="stStatusWidget"] summary, 
+        details[data-testid="stExpander"] summary, 
+        div[data-testid="stExpander"] summary {
             background-color: #0f172a !important;
             color: #38bdf8 !important;
             font-weight: 700 !important;
             border-radius: 8px !important;
+            border: none !important;
+            padding: 10px 14px !important;
         }
-        div[data-testid="stStatusWidget"] summary * {
+        div[data-testid="stStatusWidget"] summary:hover, 
+        details[data-testid="stExpander"] summary:hover, 
+        details[data-testid="stExpander"][open] summary,
+        div[data-testid="stExpander"] summary:hover,
+        div[data-testid="stExpander"] summary:focus,
+        div[data-testid="stExpander"] summary:active {
+            background-color: #1e293b !important;
+            color: #38bdf8 !important;
+            border: none !important;
+        }
+        div[data-testid="stStatusWidget"] summary *, 
+        details[data-testid="stExpander"] summary *,
+        div[data-testid="stExpander"] summary * {
             color: #38bdf8 !important;
         }
-        div[data-testid="stStatusWidget"] code, details[data-testid="stExpander"] code {
-            background-color: #1e293b !important;
-            color: #34d399 !important;
-            border: 1px solid #334155 !important;
-            padding: 2px 6px !important;
-            border-radius: 4px !important;
+        details[data-testid="stExpander"] summary:hover *,
+        details[data-testid="stExpander"][open] summary * {
+            color: #38bdf8 !important;
+        }
+        
+        /* Expander Inner Content Region Dark Mode Fix */
+        details[data-testid="stExpander"] > div[role="region"],
+        div[data-testid="stExpander"] > div[role="region"] {
+            background-color: #0d1527 !important;
+            color: #f8fafc !important;
+            padding: 12px 16px !important;
+            border-top: 1px solid #1e293b !important;
+        }
+        details[data-testid="stExpander"] > div[role="region"] *,
+        div[data-testid="stExpander"] > div[role="region"] * {
+            color: #f8fafc !important;
         }
         
         .qty-preview-badge {
@@ -976,15 +1017,15 @@ with tab_chat:
                 with st.expander("🛠️ View Multi-Agent Execution Graph & Tool Traces (Open/Hide)", expanded=False):
                     for step in msg["trace_steps"]:
                         if "Orchestrator" in step:
-                            st.markdown(f"🧠 **[Node 1: Intent Orchestrator]** `{step}`")
+                            st.markdown(f"<div style='margin-bottom:8px; display:flex; align-items:center; gap:8px;'><span style='background:#e11d48; color:#ffffff; padding:3px 10px; border-radius:6px; font-weight:700; font-size:0.82rem; white-space:nowrap;'>🧠 Node 1: Orchestrator</span> <span style='color:#ffffff; font-weight:600; font-size:0.93rem;'>{step}</span></div>", unsafe_allow_html=True)
                         elif "Shelf Monitor" in step:
-                            st.markdown(f"📊 **[Node 2: Shelf Monitor Agent]** `{step}`")
+                            st.markdown(f"<div style='margin-bottom:8px; display:flex; align-items:center; gap:8px;'><span style='background:#ea580c; color:#ffffff; padding:3px 10px; border-radius:6px; font-weight:700; font-size:0.82rem; white-space:nowrap;'>📊 Node 2: Shelf Monitor</span> <span style='color:#ffffff; font-weight:600; font-size:0.93rem;'>{step}</span></div>", unsafe_allow_html=True)
                         elif "A2A" in step or "RFQ" in step or "Negotiation" in step:
-                            st.markdown(f"💬 **[Node 3: Autonomous A2A Negotiator]** `{step}`")
+                            st.markdown(f"<div style='margin-bottom:8px; display:flex; align-items:center; gap:8px;'><span style='background:#0284c7; color:#ffffff; padding:3px 10px; border-radius:6px; font-weight:700; font-size:0.82rem; white-space:nowrap;'>💬 Node 3: A2A Negotiator</span> <span style='color:#ffffff; font-weight:600; font-size:0.93rem;'>{step}</span></div>", unsafe_allow_html=True)
                         elif "Budget" in step or "Guard" in step or "Execution" in step:
-                            st.markdown(f"🛡️ **[Node 4: Safety Guardrails Engine]** `{step}`")
+                            st.markdown(f"<div style='margin-bottom:8px; display:flex; align-items:center; gap:8px;'><span style='background:#059669; color:#ffffff; padding:3px 10px; border-radius:6px; font-weight:700; font-size:0.82rem; white-space:nowrap;'>🛡️ Node 4: Safety Guardrails</span> <span style='color:#ffffff; font-weight:600; font-size:0.93rem;'>{step}</span></div>", unsafe_allow_html=True)
                         else:
-                            st.markdown(f"⚙️ **[Graph Step]** `{step}`")
+                            st.markdown(f"<div style='margin-bottom:8px; display:flex; align-items:center; gap:8px;'><span style='background:#4f46e5; color:#ffffff; padding:3px 10px; border-radius:6px; font-weight:700; font-size:0.82rem; white-space:nowrap;'>⚙️ Graph Step</span> <span style='color:#ffffff; font-weight:600; font-size:0.93rem;'>{step}</span></div>", unsafe_allow_html=True)
             st.markdown(msg["content"])
 
     # --- HUMAN-IN-THE-LOOP APPROVAL UI ---
@@ -1135,15 +1176,15 @@ with tab_chat:
                 
                 for step in result.get("trace_steps", []):
                     if "Orchestrator" in step:
-                        status_box.write(f"🧠 **[Node 1: Intent Orchestrator]** {step}")
+                        st.markdown(f"<div style='margin-bottom:8px; display:flex; align-items:center; gap:8px;'><span style='background:#e11d48; color:#ffffff; padding:3px 10px; border-radius:6px; font-weight:700; font-size:0.82rem; white-space:nowrap;'>🧠 Node 1: Orchestrator</span> <span style='color:#ffffff; font-weight:600; font-size:0.93rem;'>{step}</span></div>", unsafe_allow_html=True)
                     elif "Shelf Monitor" in step:
-                        status_box.write(f"📊 **[Node 2: Shelf Monitor Agent]** {step}")
+                        st.markdown(f"<div style='margin-bottom:8px; display:flex; align-items:center; gap:8px;'><span style='background:#ea580c; color:#ffffff; padding:3px 10px; border-radius:6px; font-weight:700; font-size:0.82rem; white-space:nowrap;'>📊 Node 2: Shelf Monitor</span> <span style='color:#ffffff; font-weight:600; font-size:0.93rem;'>{step}</span></div>", unsafe_allow_html=True)
                     elif "A2A" in step or "RFQ" in step or "Negotiation" in step:
-                        status_box.write(f"💬 **[Node 3: Autonomous A2A Negotiator]** {step}")
+                        st.markdown(f"<div style='margin-bottom:8px; display:flex; align-items:center; gap:8px;'><span style='background:#0284c7; color:#ffffff; padding:3px 10px; border-radius:6px; font-weight:700; font-size:0.82rem; white-space:nowrap;'>💬 Node 3: A2A Negotiator</span> <span style='color:#ffffff; font-weight:600; font-size:0.93rem;'>{step}</span></div>", unsafe_allow_html=True)
                     elif "Budget" in step or "Guard" in step or "Execution" in step:
-                        status_box.write(f"🛡️ **[Node 4: Safety Guardrails Engine]** {step}")
+                        st.markdown(f"<div style='margin-bottom:8px; display:flex; align-items:center; gap:8px;'><span style='background:#059669; color:#ffffff; padding:3px 10px; border-radius:6px; font-weight:700; font-size:0.82rem; white-space:nowrap;'>🛡️ Node 4: Safety Guardrails</span> <span style='color:#ffffff; font-weight:600; font-size:0.93rem;'>{step}</span></div>", unsafe_allow_html=True)
                     else:
-                        status_box.write(f"⚙️ **[Graph Execution Step]** {step}")
+                        st.markdown(f"<div style='margin-bottom:8px; display:flex; align-items:center; gap:8px;'><span style='background:#4f46e5; color:#ffffff; padding:3px 10px; border-radius:6px; font-weight:700; font-size:0.82rem; white-space:nowrap;'>⚙️ Graph Step</span> <span style='color:#ffffff; font-weight:600; font-size:0.93rem;'>{step}</span></div>", unsafe_allow_html=True)
                     time.sleep(0.25)
                     
                 status_box.update(label="✅ **Multi-Agent Execution Pipeline Completed!**", state="complete", expanded=True)
