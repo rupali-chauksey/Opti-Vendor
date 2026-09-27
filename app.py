@@ -64,6 +64,16 @@ is_dark_mode = st.session_state.get("app_theme") == "Dark"
 if is_dark_mode:
     st.markdown("""
     <style>
+        /* Remove top Streamlit header gap */
+        header[data-testid="stHeader"] {
+            background: transparent !important;
+        }
+        .block-container {
+            padding-top: 1rem !important;
+            padding-bottom: 2rem !important;
+            max-width: 100% !important;
+        }
+
         /* High-End Cyber Control Tower Dark Theme */
         .stApp {
             background-color: #080c14 !important;
@@ -285,6 +295,16 @@ if is_dark_mode:
 else:
     st.markdown("""
     <style>
+        /* Remove top Streamlit header gap */
+        header[data-testid="stHeader"] {
+            background: transparent !important;
+        }
+        .block-container {
+            padding-top: 1rem !important;
+            padding-bottom: 2rem !important;
+            max-width: 100% !important;
+        }
+
         /* Full Page Background */
         .stApp {
             background-color: #f5f7fa !important;
