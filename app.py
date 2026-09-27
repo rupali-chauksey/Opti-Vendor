@@ -40,7 +40,14 @@ if "app_theme" not in st.session_state:
 
 # Theme Selector in Sidebar (processed first)
 with st.sidebar:
-    st.image("https://img.icons8.com/color/96/bot.png", width=52)
+    st.markdown(
+        """
+        <div style="display: flex; justify-content: center; align-items: center; padding-top: 6px; padding-bottom: 12px;">
+            <img src="https://img.icons8.com/color/96/bot.png" width="60" style="filter: drop-shadow(0px 4px 8px rgba(0, 0, 0, 0.3));">
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
     st.markdown("### 🎨 Theme Mode")
     theme_choice = st.selectbox(
         "Select Interface Theme:",
@@ -1017,15 +1024,18 @@ with tab_chat:
                 with st.expander("🛠️ View Multi-Agent Execution Graph & Tool Traces (Open/Hide)", expanded=False):
                     for step in msg["trace_steps"]:
                         if "Orchestrator" in step:
-                            st.markdown(f"🧠 **[Orchestrator Node]** {step}")
+                            prefix = "🧠 **[Orchestrator Node]**"
                         elif "Shelf Monitor" in step:
-                            st.markdown(f"📊 **[Shelf Monitor Agent]** {step}")
+                            prefix = "📊 **[Shelf Monitor Agent]**"
                         elif "A2A" in step or "RFQ" in step or "Negotiation" in step:
-                            st.markdown(f"💬 **[A2A Negotiator]** {step}")
+                            prefix = "💬 **[A2A Negotiator]**"
                         elif "Budget" in step or "Guard" in step or "Execution" in step:
-                            st.markdown(f"🛡️ **[Safety Guardrails Engine]** {step}")
+                            prefix = "🛡️ **[Safety Guardrails Engine]**"
                         else:
-                            st.markdown(f"⚙️ **[Graph Execution Step]** {step}")
+                            prefix = "⚙️ **[Graph Step]**"
+                        
+                        trace_color = "#f97316" if is_dark_mode else "#15803d"
+                        st.markdown(f"{prefix} <span style='color:{trace_color}; font-weight:600;'>{step}</span>", unsafe_allow_html=True)
             st.markdown(msg["content"])
 
     # --- HUMAN-IN-THE-LOOP APPROVAL UI ---
@@ -1176,15 +1186,18 @@ with tab_chat:
                 
                 for step in result.get("trace_steps", []):
                     if "Orchestrator" in step:
-                        st.markdown(f"<div style='margin-bottom:8px; display:flex; align-items:center; gap:8px;'><span style='background:#e11d48; color:#ffffff; padding:3px 10px; border-radius:6px; font-weight:700; font-size:0.82rem; white-space:nowrap;'>🧠 Node 1: Orchestrator</span> <span style='color:#ffffff; font-weight:600; font-size:0.93rem;'>{step}</span></div>", unsafe_allow_html=True)
+                        prefix = "🧠 **[Node 1: Intent Orchestrator]**"
                     elif "Shelf Monitor" in step:
-                        st.markdown(f"<div style='margin-bottom:8px; display:flex; align-items:center; gap:8px;'><span style='background:#ea580c; color:#ffffff; padding:3px 10px; border-radius:6px; font-weight:700; font-size:0.82rem; white-space:nowrap;'>📊 Node 2: Shelf Monitor</span> <span style='color:#ffffff; font-weight:600; font-size:0.93rem;'>{step}</span></div>", unsafe_allow_html=True)
+                        prefix = "📊 **[Node 2: Shelf Monitor Agent]**"
                     elif "A2A" in step or "RFQ" in step or "Negotiation" in step:
-                        st.markdown(f"<div style='margin-bottom:8px; display:flex; align-items:center; gap:8px;'><span style='background:#0284c7; color:#ffffff; padding:3px 10px; border-radius:6px; font-weight:700; font-size:0.82rem; white-space:nowrap;'>💬 Node 3: A2A Negotiator</span> <span style='color:#ffffff; font-weight:600; font-size:0.93rem;'>{step}</span></div>", unsafe_allow_html=True)
+                        prefix = "💬 **[Node 3: Autonomous A2A Negotiator]**"
                     elif "Budget" in step or "Guard" in step or "Execution" in step:
-                        st.markdown(f"<div style='margin-bottom:8px; display:flex; align-items:center; gap:8px;'><span style='background:#059669; color:#ffffff; padding:3px 10px; border-radius:6px; font-weight:700; font-size:0.82rem; white-space:nowrap;'>🛡️ Node 4: Safety Guardrails</span> <span style='color:#ffffff; font-weight:600; font-size:0.93rem;'>{step}</span></div>", unsafe_allow_html=True)
+                        prefix = "🛡️ **[Node 4: Safety Guardrails Engine]**"
                     else:
-                        st.markdown(f"<div style='margin-bottom:8px; display:flex; align-items:center; gap:8px;'><span style='background:#4f46e5; color:#ffffff; padding:3px 10px; border-radius:6px; font-weight:700; font-size:0.82rem; white-space:nowrap;'>⚙️ Graph Step</span> <span style='color:#ffffff; font-weight:600; font-size:0.93rem;'>{step}</span></div>", unsafe_allow_html=True)
+                        prefix = "⚙️ **[Graph Execution Step]**"
+                    
+                    trace_color = "#f97316" if is_dark_mode else "#15803d"
+                    status_box.write(f"{prefix} <span style='color:{trace_color}; font-weight:600;'>{step}</span>", unsafe_allow_html=True)
                     time.sleep(0.25)
                     
                 status_box.update(label="✅ **Multi-Agent Execution Pipeline Completed!**", state="complete", expanded=True)
