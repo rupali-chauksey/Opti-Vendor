@@ -19,6 +19,11 @@ Manual procurement over-orders perishable goods, blocking capital and creating w
 
 ---
 
+## Demo Linlk
+
+https://opti-vendor-unkmmdjpp3udeqrsdpxqds.streamlit.app/
+
+
 ## ✨ Solution
 
 OptiVendor closes the loop. It autonomously:
