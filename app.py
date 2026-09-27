@@ -437,17 +437,17 @@ if is_dark_mode:
             color: #38bdf8 !important;
         }
         
-        /* Expander Inner Content Region Dark Mode Fix */
+        /* Expander Inner Content Region Dark Mode Fix (Prevents White Bar when Opened) */
         details[data-testid="stExpander"] > div[role="region"],
-        div[data-testid="stExpander"] > div[role="region"] {
+        div[data-testid="stExpander"] > div[role="region"],
+        div[data-testid="stExpanderDetails"],
+        div[data-testid="stExpanderDetails"] * {
             background-color: #0d1527 !important;
             color: #f8fafc !important;
+        }
+        div[data-testid="stExpanderDetails"] {
             padding: 12px 16px !important;
             border-top: 1px solid #1e293b !important;
-        }
-        details[data-testid="stExpander"] > div[role="region"] *,
-        div[data-testid="stExpander"] > div[role="region"] * {
-            color: #f8fafc !important;
         }
         
         .qty-preview-badge {
@@ -1014,21 +1014,21 @@ with tab_warroom:
 # TAB 2: MULTI-AGENT CHAT TERMINAL (WITH HITL APPROVAL + DEMO AUTO-RUN)
 # -------------------------------------------------------------
 with tab_chat:
-    # Top Agent Card Banner Header (matching user screenshot)
+    # Single Combined Agent Header Card (Title + Welcome + Status in 1 Card)
     st.markdown(f"""
-    <div style="display: flex; justify-content: space-between; align-items: center; background: {'#0d1527' if is_dark_mode else '#ffffff'}; border: 1px solid {'#1e293b' if is_dark_mode else '#cbd5e1'}; border-radius: 12px; padding: 14px 20px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+    <div style="display: flex; justify-content: space-between; align-items: center; background: {'#0d1527' if is_dark_mode else '#ffffff'}; border: 1px solid {'#1e293b' if is_dark_mode else '#cbd5e1'}; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; box-shadow: 0 4px 14px rgba(0,0,0,0.2);">
         <div style="display: flex; align-items: center; gap: 14px;">
-            <img src="https://img.icons8.com/color/96/bot.png" width="40" style="filter: drop-shadow(0 2px 6px rgba(0,0,0,0.3)); flex-shrink: 0;" />
+            <img src="https://img.icons8.com/color/96/bot.png" width="44" style="filter: drop-shadow(0 2px 6px rgba(0,0,0,0.3)); flex-shrink: 0;" />
             <div>
                 <div style="font-weight: 700; font-size: 1.08rem; color: {'#f8fafc' if is_dark_mode else '#0f172a'}; line-height: 1.2;">
                     OptiVendor Store Manager Orchestrator
                 </div>
-                <div style="font-size: 0.84rem; color: {'#94a3b8' if is_dark_mode else '#64748b'}; margin-top: 3px;">
-                    Routes intents across shelf-monitor, negotiation and POS agents
+                <div style="font-size: 0.88rem; color: {'#94a3b8' if is_dark_mode else '#475569'}; margin-top: 4px;">
+                    Hello! I am the Store Manager Orchestrator. How can I assist with store inventory, out-of-stock scans, or automated restock negotiations today?
                 </div>
             </div>
         </div>
-        <div style="{badge_style} font-size: 0.8rem; font-weight: 700; padding: 5px 14px; border-radius: 20px; display: flex; align-items: center; gap: 6px;">
+        <div style="{badge_style} font-size: 0.8rem; font-weight: 700; padding: 5px 14px; border-radius: 20px; display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
             ● online
         </div>
     </div>
@@ -1036,9 +1036,7 @@ with tab_chat:
 
     # Initialize session states
     if "chat_history" not in st.session_state:
-        st.session_state["chat_history"] = [
-            {"role": "assistant", "content": "Hello! I am the OptiVendor Store Manager Orchestrator. How can I assist with store inventory, out-of-stock scans, or automated restock negotiations today?"}
-        ]
+        st.session_state["chat_history"] = []
 
     if "pending_approval" not in st.session_state:
         st.session_state["pending_approval"] = None
