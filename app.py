@@ -37,79 +37,46 @@ st.set_page_config(
 # Professional Enterprise Light Grey Theme (#F5F7FA) with LangSmith/Datadog Minimalist Styling
 st.markdown("""
 <style>
-    /* High-End Logistics & Supply Chain Cyber-Grid Theme */
+    /* Full Page Background */
     .stApp {
-        background-color: #f8fafc !important;
-        background-image: 
-            radial-gradient(at 0% 0%, rgba(14, 165, 233, 0.08) 0px, transparent 50%),
-            radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.08) 0px, transparent 50%),
-            linear-gradient(to right, rgba(226, 232, 240, 0.6) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(226, 232, 240, 0.6) 1px, transparent 1px) !important;
-        background-size: 100% 100%, 100% 100%, 32px 32px, 32px 32px !important;
+        background-color: #f5f7fa !important;
+        background-image: radial-gradient(#e2e8f0 1px, transparent 1px) !important;
+        background-size: 24px 24px !important;
         color: #0f172a;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
     
-    /* Hero Header Banner (Centered, High Visibility) */
+    /* Global Typography */
     .hero-header {
-        text-align: center;
-        padding: 24px 30px;
-        background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
-        border: 1px solid #334155;
-        border-radius: 20px;
+        text-align: left;
+        padding: 10px 0 22px 0;
+        border-bottom: 1px solid #e2e8f0;
         margin-bottom: 24px;
-        box-shadow: 0 12px 30px -8px rgba(15, 23, 42, 0.35), 0 0 20px rgba(14, 165, 233, 0.12);
-    }
-    .hero-avatar-badge {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 64px;
-        height: 64px;
-        border-radius: 18px;
-        background: linear-gradient(135deg, #38bdf8 0%, #10b981 100%);
-        box-shadow: 0 6px 20px rgba(56, 189, 248, 0.35);
-        margin-bottom: 12px;
-        font-size: 2rem;
     }
     .hero-title {
-        font-size: 2.1rem;
+        font-size: 2rem;
         font-weight: 800;
-        color: #ffffff;
+        color: #0f172a;
         letter-spacing: -0.5px;
-        margin-bottom: 6px;
-        justify-content: center;
-        align-items: center;
+        margin-bottom: 4px;
         display: flex;
+        align-items: center;
         gap: 10px;
     }
-    .hero-title-highlight {
-        background: linear-gradient(135deg, #38bdf8 0%, #34d399 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
     .hero-subtitle {
-        color: #94a3b8;
-        font-size: 1.02rem;
+        color: #475569;
+        font-size: 1rem;
         font-weight: 400;
-        max-width: 680px;
-        margin: 0 auto;
     }
     
-    /* Glassmorphism White Card Container */
+    /* White Card Container */
     .optimizer-card {
-        background: rgba(255, 255, 255, 0.92);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border-radius: 16px;
-        padding: 24px;
-        box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.05), 0 8px 10px -6px rgba(15, 23, 42, 0.02);
-        margin-bottom: 20px;
-        border: 1px solid rgba(226, 232, 240, 0.9);
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-    .optimizer-card:hover {
-        box-shadow: 0 14px 30px -5px rgba(15, 23, 42, 0.08);
+        background: #ffffff;
+        border-radius: 14px;
+        padding: 22px;
+        box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
+        margin-bottom: 18px;
+        border: 1px solid #e2e8f0;
     }
     
     /* Step Header with Badges */
@@ -288,22 +255,15 @@ st.markdown("""
 # Top Header
 st.markdown("""
 <div class="hero-header">
-    <div class="hero-avatar-badge">🤖</div>
-    <div class="hero-title">OptiVendor <span class="hero-title-highlight">Multi-Agent System</span></div>
-    <div class="hero-subtitle">Autonomous Inventory Procurement, Agent-to-Agent (A2A) Price Negotiation & POS Control</div>
+    <div class="hero-title">📦 OptiVendor Enterprise</div>
+    <div class="hero-subtitle">Autonomous Multi-Agent Inventory Procurement, A2A Negotiation & POS Inventory Control</div>
 </div>
 """, unsafe_allow_html=True)
 
 # Sidebar with Demo Scenarios
 with st.sidebar:
-    st.markdown("""
-    <div style="text-align: center; padding: 6px 0 14px 0;">
-        <div style="display: inline-flex; align-items: center; justify-content: center; width: 62px; height: 62px; border-radius: 18px; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); box-shadow: 0 6px 18px rgba(99, 102, 241, 0.35); margin-bottom: 8px;">
-            <span style="font-size: 2rem;">🤖</span>
-        </div>
-        <h3 style="margin: 4px 0 0 0; color: #0f172a; font-size: 1.15rem; font-weight: 800;">System Health & Stack</h3>
-    </div>
-    """, unsafe_allow_html=True)
+    st.image("https://img.icons8.com/color/96/bot.png", width=56)
+    st.markdown("### System Health & Stack")
     st.success("🟢 11 A2A Vendor Microservices Live")
     st.info("🦙 Local Ollama Models: `qwen2.5:7b` + `llama3.2`")
     st.info("💾 Database: `veganflow_store.db` (SQLite)")
@@ -744,6 +704,7 @@ with tab_chat:
                 status_box.update(label="✅ **Multi-Agent Task Completed!**", state="complete", expanded=False)
 
             reply = result.get("final_response", "Request completed.")
+            st.markdown(reply)
             st.session_state["chat_history"].append({"role": "assistant", "content": reply})
             
             # --- CHECK IF HUMAN APPROVAL IS NEEDED ---
@@ -752,7 +713,7 @@ with tab_chat:
                     "deal": result["agreed_deal"],
                     "timestamp": time.time()
                 }
-            st.rerun()
+                st.rerun()
 
 # -------------------------------------------------------------
 # TAB 3: LIVE STORE INVENTORY & POS
