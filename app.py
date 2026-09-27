@@ -1017,15 +1017,15 @@ with tab_chat:
                 with st.expander("🛠️ View Multi-Agent Execution Graph & Tool Traces (Open/Hide)", expanded=False):
                     for step in msg["trace_steps"]:
                         if "Orchestrator" in step:
-                            st.markdown(f"<div style='margin-bottom:8px; display:flex; align-items:center; gap:8px;'><span style='background:#e11d48; color:#ffffff; padding:3px 10px; border-radius:6px; font-weight:700; font-size:0.82rem; white-space:nowrap;'>🧠 Node 1: Orchestrator</span> <span style='color:#ffffff; font-weight:600; font-size:0.93rem;'>{step}</span></div>", unsafe_allow_html=True)
+                            st.markdown(f"🧠 **[Orchestrator Node]** {step}")
                         elif "Shelf Monitor" in step:
-                            st.markdown(f"<div style='margin-bottom:8px; display:flex; align-items:center; gap:8px;'><span style='background:#ea580c; color:#ffffff; padding:3px 10px; border-radius:6px; font-weight:700; font-size:0.82rem; white-space:nowrap;'>📊 Node 2: Shelf Monitor</span> <span style='color:#ffffff; font-weight:600; font-size:0.93rem;'>{step}</span></div>", unsafe_allow_html=True)
+                            st.markdown(f"📊 **[Shelf Monitor Agent]** {step}")
                         elif "A2A" in step or "RFQ" in step or "Negotiation" in step:
-                            st.markdown(f"<div style='margin-bottom:8px; display:flex; align-items:center; gap:8px;'><span style='background:#0284c7; color:#ffffff; padding:3px 10px; border-radius:6px; font-weight:700; font-size:0.82rem; white-space:nowrap;'>💬 Node 3: A2A Negotiator</span> <span style='color:#ffffff; font-weight:600; font-size:0.93rem;'>{step}</span></div>", unsafe_allow_html=True)
+                            st.markdown(f"💬 **[A2A Negotiator]** {step}")
                         elif "Budget" in step or "Guard" in step or "Execution" in step:
-                            st.markdown(f"<div style='margin-bottom:8px; display:flex; align-items:center; gap:8px;'><span style='background:#059669; color:#ffffff; padding:3px 10px; border-radius:6px; font-weight:700; font-size:0.82rem; white-space:nowrap;'>🛡️ Node 4: Safety Guardrails</span> <span style='color:#ffffff; font-weight:600; font-size:0.93rem;'>{step}</span></div>", unsafe_allow_html=True)
+                            st.markdown(f"🛡️ **[Safety Guardrails Engine]** {step}")
                         else:
-                            st.markdown(f"<div style='margin-bottom:8px; display:flex; align-items:center; gap:8px;'><span style='background:#4f46e5; color:#ffffff; padding:3px 10px; border-radius:6px; font-weight:700; font-size:0.82rem; white-space:nowrap;'>⚙️ Graph Step</span> <span style='color:#ffffff; font-weight:600; font-size:0.93rem;'>{step}</span></div>", unsafe_allow_html=True)
+                            st.markdown(f"⚙️ **[Graph Execution Step]** {step}")
             st.markdown(msg["content"])
 
     # --- HUMAN-IN-THE-LOOP APPROVAL UI ---
