@@ -103,26 +103,40 @@ if is_dark_mode:
             color: #e2e8f0 !important;
         }
         
-        /* High-Contrast Selectbox Styling for Dark Mode */
+        /* Bulletproof High-Contrast Selectbox Styling for Dark Mode */
         div[data-testid="stSelectbox"] div[data-baseweb="select"],
+        div[data-testid="stSelectbox"] div[data-baseweb="select"] > div,
         div[data-testid="stSelectbox"] div[role="combobox"],
-        div[data-testid="stSelectbox"] [data-baseweb="select"] > div {
+        div[data-baseweb="select"],
+        div[data-baseweb="select"] > div {
             background-color: #1e293b !important;
+            background: #1e293b !important;
             border: 1px solid #334155 !important;
             border-radius: 10px !important;
         }
-        div[data-testid="stSelectbox"] div[data-baseweb="select"] *,
+        div[data-testid="stSelectbox"] [data-baseweb="select"] *,
         div[data-testid="stSelectbox"] div[role="combobox"] *,
-        div[data-testid="stSelectbox"] [data-baseweb="select"] span,
-        div[data-testid="stSelectbox"] [data-baseweb="select"] div {
-            color: #f8fafc !important;
-            fill: #f8fafc !important;
+        div[data-baseweb="select"] *,
+        div[data-baseweb="select"] span,
+        div[data-baseweb="select"] p,
+        div[data-baseweb="select"] div,
+        div[data-baseweb="select"] input {
+            color: #ffffff !important;
+            -webkit-text-fill-color: #ffffff !important;
+            fill: #ffffff !important;
+            font-weight: 600 !important;
+        }
+        div[data-testid="stSelectbox"] label,
+        div[data-testid="stSelectbox"] label * {
+            color: #94a3b8 !important;
+            -webkit-text-fill-color: #94a3b8 !important;
         }
         div[data-baseweb="popover"] ul {
             background-color: #0f172a !important;
         }
         div[data-baseweb="popover"] li, div[data-baseweb="popover"] li * {
             color: #f8fafc !important;
+            -webkit-text-fill-color: #f8fafc !important;
             background-color: transparent !important;
         }
         
@@ -486,20 +500,33 @@ else:
             color: #0f172a !important;
         }
         
-        /* Selectbox High Contrast Styling for Light Mode */
+        /* Bulletproof High-Contrast Selectbox Styling for Light Mode */
         div[data-testid="stSelectbox"] div[data-baseweb="select"],
+        div[data-testid="stSelectbox"] div[data-baseweb="select"] > div,
         div[data-testid="stSelectbox"] div[role="combobox"],
-        div[data-testid="stSelectbox"] [data-baseweb="select"] > div {
+        div[data-baseweb="select"],
+        div[data-baseweb="select"] > div {
             background-color: #ffffff !important;
+            background: #ffffff !important;
             border: 1px solid #cbd5e1 !important;
             border-radius: 10px !important;
         }
-        div[data-testid="stSelectbox"] div[data-baseweb="select"] *,
+        div[data-testid="stSelectbox"] [data-baseweb="select"] *,
         div[data-testid="stSelectbox"] div[role="combobox"] *,
-        div[data-testid="stSelectbox"] [data-baseweb="select"] span,
-        div[data-testid="stSelectbox"] [data-baseweb="select"] div {
+        div[data-baseweb="select"] *,
+        div[data-baseweb="select"] span,
+        div[data-baseweb="select"] p,
+        div[data-baseweb="select"] div,
+        div[data-baseweb="select"] input {
             color: #0f172a !important;
+            -webkit-text-fill-color: #0f172a !important;
             fill: #0f172a !important;
+            font-weight: 600 !important;
+        }
+        div[data-testid="stSelectbox"] label,
+        div[data-testid="stSelectbox"] label * {
+            color: #475569 !important;
+            -webkit-text-fill-color: #475569 !important;
         }
         
         /* Global Typography */
