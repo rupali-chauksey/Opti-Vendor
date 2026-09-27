@@ -857,32 +857,6 @@ with tab_warroom:
 # TAB 2: MULTI-AGENT CHAT TERMINAL (WITH HITL APPROVAL + DEMO AUTO-RUN)
 # -------------------------------------------------------------
 with tab_chat:
-    pill_inventory = "background: #064e3b; color: #34d399; border: 1px solid #10b981;" if is_dark_mode else "background: #dcfce7; color: #15803d; border: 1px solid #86efac;"
-    pill_negotiation = "background: #3b0764; color: #c084fc; border: 1px solid #a855f7;" if is_dark_mode else "background: #f3e8ff; color: #7e22ce; border: 1px solid #d8b4fe;"
-    pill_guardrails = "background: #0c4a6e; color: #38bdf8; border: 1px solid #0284c7;" if is_dark_mode else "background: #e0f2fe; color: #0369a1; border: 1px solid #7dd3fc;"
-    pill_execution = "background: #451a03; color: #fb923c; border: 1px solid #f97316;" if is_dark_mode else "background: #ffedd5; color: #c2410c; border: 1px solid #fed7aa;"
-    
-    st.markdown(f"""
-    <div class="optimizer-card" style="margin-bottom: 16px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-            <div>
-                <h3 style="margin: 0; font-size: 1.35rem; font-weight: 800; display: flex; align-items: center; gap: 8px; color: {'#f8fafc' if is_dark_mode else '#0f172a'};">
-                    🤖 OptiVendor AI Assistant
-                </h3>
-                <p style="margin: 4px 0 0 0; font-size: 0.88rem; color: {'#94a3b8' if is_dark_mode else '#64748b'};">
-                    Your autonomous procurement partner • Powered by Multi-Agent AI
-                </p>
-            </div>
-            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                <span style="{pill_inventory} font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 20px;">🛡️ Inventory Aware</span>
-                <span style="{pill_negotiation} font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 20px;">💜 Vendor Negotiation</span>
-                <span style="{pill_guardrails} font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 20px;">💙 Smart Guardrails</span>
-                <span style="{pill_execution} font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 20px;">🧡 Auto Execution</span>
-            </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
     # Welcome Assistant Card Bubble
     st.markdown(f"""
     <div style="display: flex; align-items: flex-start; gap: 14px; background: {'#0f172a' if is_dark_mode else '#f0f9ff'}; border: 1px solid {'#1e293b' if is_dark_mode else '#e0f2fe'}; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
