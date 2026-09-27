@@ -1121,10 +1121,19 @@ with tab_chat:
                 result = veganflow_pipeline.invoke(init_state, config=config)
                 
                 for step in result.get("trace_steps", []):
-                    status_box.write(f"⚙️ **Step:** {step}")
-                    time.sleep(0.2)
+                    if "Orchestrator" in step:
+                        status_box.write(f"🧠 **[Node 1: Intent Orchestrator]** {step}")
+                    elif "Shelf Monitor" in step:
+                        status_box.write(f"📊 **[Node 2: Shelf Monitor Agent]** {step}")
+                    elif "A2A" in step or "RFQ" in step or "Negotiation" in step:
+                        status_box.write(f"💬 **[Node 3: Autonomous A2A Negotiator]** {step}")
+                    elif "Budget" in step or "Guard" in step or "Execution" in step:
+                        status_box.write(f"🛡️ **[Node 4: Safety Guardrails Engine]** {step}")
+                    else:
+                        status_box.write(f"⚙️ **[Graph Execution Step]** {step}")
+                    time.sleep(0.25)
                     
-                status_box.update(label="✅ **Multi-Agent Task Completed!**", state="complete", expanded=False)
+                status_box.update(label="✅ **Multi-Agent Execution Pipeline Completed!**", state="complete", expanded=True)
 
             reply = result.get("final_response", "Request completed.")
             st.markdown(reply)
