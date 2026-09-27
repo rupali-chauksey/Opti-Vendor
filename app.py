@@ -744,7 +744,6 @@ with tab_chat:
                 status_box.update(label="✅ **Multi-Agent Task Completed!**", state="complete", expanded=False)
 
             reply = result.get("final_response", "Request completed.")
-            st.markdown(reply)
             st.session_state["chat_history"].append({"role": "assistant", "content": reply})
             
             # --- CHECK IF HUMAN APPROVAL IS NEEDED ---
@@ -753,7 +752,7 @@ with tab_chat:
                     "deal": result["agreed_deal"],
                     "timestamp": time.time()
                 }
-                st.rerun()
+            st.rerun()
 
 # -------------------------------------------------------------
 # TAB 3: LIVE STORE INVENTORY & POS
