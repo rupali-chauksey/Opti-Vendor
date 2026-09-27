@@ -17,7 +17,7 @@ from agents import veganflow_pipeline
 
 st.set_page_config(
     page_title="OptiVendor | Autonomous Multi-Agent Procurement System",
-    page_icon="⚡",
+    page_icon="📦",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -243,7 +243,7 @@ st.markdown("""
 # Top Header
 st.markdown("""
 <div class="hero-header">
-    <div class="hero-title">⚡ OptiVendor Enterprise</div>
+    <div class="hero-title">📦 OptiVendor Enterprise</div>
     <div class="hero-subtitle">Autonomous Multi-Agent Inventory Procurement, A2A Negotiation & POS Inventory Control</div>
 </div>
 """, unsafe_allow_html=True)
