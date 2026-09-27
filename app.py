@@ -752,7 +752,7 @@ with st.sidebar:
     
     # --- Database Maintenance ---
     st.markdown("#### Database Maintenance")
-    if st.button("⚠️ Reset POS & Store Database", use_container_width=True):
+    if st.button("⚠️ Reset POS Database", use_container_width=True, key="reset_db_sidebar"):
         init_database()
         st.session_state["chat_history"] = [
             {"role": "assistant", "content": "Database reset! Ready for fresh demo."}
@@ -1228,12 +1228,23 @@ with tab_chat:
 # TAB 3: LIVE STORE INVENTORY & POS
 # -------------------------------------------------------------
 with tab_pos:
-    st.markdown("""
-    <div class="optimizer-card">
-        <h4 style="margin-top:0; color:#0f172a; font-weight:700;">📦 OptiVendor POS Database State (<code>optivendor_store.db</code>)</h4>
-        <p style="color:#64748b; font-size:0.95rem;">Live inventory levels, velocity, and Days of Supply computed from SQLite.</p>
-    </div>
-    """, unsafe_allow_html=True)
+    pos_header_col1, pos_header_col2 = st.columns([3, 1])
+    with pos_header_col1:
+        st.markdown(f"""
+        <div class="optimizer-card" style="margin-bottom: 12px;">
+            <h4 style="margin-top:0; color:{'#f8fafc' if is_dark_mode else '#0f172a'}; font-weight:700;">📦 OptiVendor POS Database State (<code>optivendor_store.db</code>)</h4>
+            <p style="color:{'#94a3b8' if is_dark_mode else '#64748b'}; font-size:0.95rem; margin-bottom:0;">Live inventory levels, velocity, and Days of Supply computed from SQLite.</p>
+        </div>
+        """, unsafe_allow_html=True)
+    with pos_header_col2:
+        if st.button("⚠️ Reset POS Database", use_container_width=True, key="reset_db_tab3"):
+            init_database()
+            st.session_state["chat_history"] = [
+                {"role": "assistant", "content": "Database reset! Ready for fresh demo."}
+            ]
+            st.session_state["pending_approval"] = None
+            st.success("Database restored!")
+            st.rerun()
 
     df_inv = get_inventory_table()
     if not df_inv.empty:
