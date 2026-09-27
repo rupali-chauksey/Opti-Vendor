@@ -306,18 +306,77 @@ if is_dark_mode:
             color: #ffffff !important;
         }
         
-        /* Chat Input Dark Mode Styling */
+        /* Chat Input & Messages Dark Mode Styling */
         div[data-testid="stChatInput"] {
             background-color: #0f172a !important;
             border: 1px solid #334155 !important;
             border-radius: 12px !important;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
         }
         div[data-testid="stChatInput"] textarea {
             color: #f8fafc !important;
             background-color: transparent !important;
         }
-        div[data-testid="stChatInput"] p {
+        div[data-testid="stChatInput"] p, div[data-testid="stChatInput"] span {
             color: #94a3b8 !important;
+        }
+        
+        /* Chat Messages Dark Mode High Contrast Fix */
+        div[data-testid="stChatMessage"] {
+            background-color: #0d1527 !important;
+            border: 1px solid #1e293b !important;
+            border-radius: 12px !important;
+            padding: 14px 18px !important;
+            margin-bottom: 12px !important;
+            color: #f8fafc !important;
+        }
+        div[data-testid="stChatMessage"] * {
+            color: #f8fafc !important;
+        }
+        div[data-testid="stChatMessage"] p, 
+        div[data-testid="stChatMessage"] span, 
+        div[data-testid="stChatMessage"] div,
+        div[data-testid="stChatMessage"] li,
+        div[data-testid="stChatMessage"] strong,
+        div[data-testid="stChatMessage"] b {
+            color: #f8fafc !important;
+        }
+        
+        /* User Chat Message Bubble Distinction */
+        div[data-testid="stChatMessage"]:has(div[data-testid="stChatMessageAvatarUser"]) {
+            background-color: #1e293b !important;
+            border: 1px solid #334155 !important;
+        }
+        div[data-testid="stChatMessage"]:has(div[data-testid="stChatMessageAvatarUser"]) * {
+            color: #f8fafc !important;
+        }
+        
+        /* Status Widget / Expander Dark Mode Fix */
+        div[data-testid="stStatusWidget"], details[data-testid="stExpander"], div[data-testid="stExpander"] {
+            background-color: #0b1329 !important;
+            border: 1px solid #1e293b !important;
+            border-radius: 10px !important;
+            color: #f8fafc !important;
+            margin-bottom: 12px !important;
+        }
+        div[data-testid="stStatusWidget"] *, details[data-testid="stExpander"] * {
+            color: #cbd5e1 !important;
+        }
+        div[data-testid="stStatusWidget"] summary, details[data-testid="stExpander"] summary {
+            background-color: #0f172a !important;
+            color: #38bdf8 !important;
+            font-weight: 700 !important;
+            border-radius: 8px !important;
+        }
+        div[data-testid="stStatusWidget"] summary * {
+            color: #38bdf8 !important;
+        }
+        div[data-testid="stStatusWidget"] code, details[data-testid="stExpander"] code {
+            background-color: #1e293b !important;
+            color: #34d399 !important;
+            border: 1px solid #334155 !important;
+            padding: 2px 6px !important;
+            border-radius: 4px !important;
         }
         
         .qty-preview-badge {
@@ -1023,14 +1082,9 @@ with tab_chat:
                 time.sleep(1)
                 st.rerun()
 
-    # --- CHAT INPUT (Manual + Demo Auto-Fill) ---
-    user_query_manual = st.chat_input("Ask: 'Check my store inventory...'")
-    
     # Determine which query to process
     user_query = None
-    if user_query_manual:
-        user_query = user_query_manual
-    elif st.session_state.get("demo_query"):
+    if st.session_state.get("demo_query"):
         user_query = st.session_state["demo_query"]
         st.session_state["demo_query"] = None
     
@@ -1082,7 +1136,13 @@ with tab_chat:
                     "deal": result["agreed_deal"],
                     "timestamp": time.time()
                 }
-                st.rerun()
+            st.rerun()
+
+    # --- CHAT INPUT (Pinned at Bottom) ---
+    user_query_manual = st.chat_input("Ask: 'Check my store inventory...'")
+    if user_query_manual:
+        st.session_state["demo_query"] = user_query_manual
+        st.rerun()
 
 # -------------------------------------------------------------
 # TAB 3: LIVE STORE INVENTORY & POS
@@ -1090,7 +1150,7 @@ with tab_chat:
 with tab_pos:
     st.markdown("""
     <div class="optimizer-card">
-        <h4 style="margin-top:0; color:#0f172a; font-weight:700;">📦 OptiVendor POS Database State (<code>veganflow_store.db</code>)</h4>
+        <h4 style="margin-top:0; color:#0f172a; font-weight:700;">📦 OptiVendor POS Database State (<code>optivendor_store.db</code>)</h4>
         <p style="color:#64748b; font-size:0.95rem;">Live inventory levels, velocity, and Days of Supply computed from SQLite.</p>
     </div>
     """, unsafe_allow_html=True)
