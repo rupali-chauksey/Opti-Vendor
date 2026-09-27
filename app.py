@@ -40,6 +40,7 @@ if "app_theme" not in st.session_state:
 
 # Theme Selector in Sidebar (processed first)
 with st.sidebar:
+    st.image("https://img.icons8.com/color/96/bot.png", width=52)
     st.markdown("### 🎨 Theme Mode")
     theme_choice = st.selectbox(
         "Select Interface Theme:",
@@ -266,7 +267,32 @@ if is_dark_mode:
             box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25) !important;
         }
         
-        /* Button Customization */
+        /* Button Customization & Text Visibility Fix */
+        div.stButton > button {
+            background: #0f172a !important;
+            color: #f8fafc !important;
+            border: 1px solid #334155 !important;
+            border-radius: 10px !important;
+            padding: 10px 14px !important;
+            text-align: left !important;
+            white-space: pre-line !important;
+            font-size: 0.84rem !important;
+            line-height: 1.35 !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25) !important;
+        }
+        div.stButton > button p, div.stButton > button span, div.stButton > button div {
+            color: #f8fafc !important;
+        }
+        div.stButton > button:hover {
+            background: #1e293b !important;
+            color: #38bdf8 !important;
+            border-color: #38bdf8 !important;
+            box-shadow: 0 4px 12px rgba(56, 189, 248, 0.2) !important;
+        }
+        div.stButton > button:hover p, div.stButton > button:hover span, div.stButton > button:hover div {
+            color: #38bdf8 !important;
+        }
+        
         div.stButton > button[kind="primary"] {
             background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
             color: #ffffff !important;
@@ -275,6 +301,23 @@ if is_dark_mode:
             font-weight: 600 !important;
             padding: 10px 20px !important;
             box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25) !important;
+        }
+        div.stButton > button[kind="primary"] p, div.stButton > button[kind="primary"] span {
+            color: #ffffff !important;
+        }
+        
+        /* Chat Input Dark Mode Styling */
+        div[data-testid="stChatInput"] {
+            background-color: #0f172a !important;
+            border: 1px solid #334155 !important;
+            border-radius: 12px !important;
+        }
+        div[data-testid="stChatInput"] textarea {
+            color: #f8fafc !important;
+            background-color: transparent !important;
+        }
+        div[data-testid="stChatInput"] p {
+            color: #94a3b8 !important;
         }
         
         .qty-preview-badge {
@@ -489,6 +532,31 @@ else:
             box-shadow: 0 2px 6px rgba(0,0,0,0.06);
         }
         
+        /* Secondary Buttons Light Mode Customization */
+        div.stButton > button {
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 10px !important;
+            padding: 10px 14px !important;
+            text-align: left !important;
+            white-space: pre-line !important;
+            font-size: 0.84rem !important;
+            line-height: 1.35 !important;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04) !important;
+        }
+        div.stButton > button p, div.stButton > button span, div.stButton > button div {
+            color: #0f172a !important;
+        }
+        div.stButton > button:hover {
+            background-color: #f8fafc !important;
+            color: #0284c7 !important;
+            border-color: #0284c7 !important;
+        }
+        div.stButton > button:hover p, div.stButton > button:hover span, div.stButton > button:hover div {
+            color: #0284c7 !important;
+        }
+        
         /* Button Customization: GREEN / DARK BLUE for Action */
         div.stButton > button[kind="primary"] {
             background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
@@ -498,6 +566,9 @@ else:
             font-weight: 600 !important;
             padding: 10px 20px !important;
             box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25) !important;
+        }
+        div.stButton > button[kind="primary"] p, div.stButton > button[kind="primary"] span {
+            color: #ffffff !important;
         }
         div.stButton > button[kind="primary"]:hover {
             background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
@@ -535,12 +606,6 @@ st.markdown(f"""
 
 # Sidebar with Demo Scenarios
 with st.sidebar:
-    st.image("https://img.icons8.com/color/96/bot.png", width=56)
-    st.markdown("### System Health & Stack")
-    st.success("🟢 11 A2A Vendor Microservices Live")
-    st.info("🦙 Local Ollama Models: `qwen2.5:7b` + `llama3.2`")
-    st.info("💾 Database: `veganflow_store.db` (SQLite)")
-    
     st.divider()
     
     # ============================================
@@ -818,31 +883,42 @@ with tab_chat:
     </div>
     """, unsafe_allow_html=True)
 
+    # Welcome Assistant Card Bubble
+    st.markdown(f"""
+    <div style="display: flex; align-items: flex-start; gap: 14px; background: {'#0f172a' if is_dark_mode else '#f0f9ff'}; border: 1px solid {'#1e293b' if is_dark_mode else '#e0f2fe'}; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+        <img src="https://img.icons8.com/color/96/bot.png" width="46" height="46" style="border-radius: 10px; background: #e0f2fe; padding: 4px; flex-shrink: 0;" />
+        <div>
+            <h4 style="margin: 0 0 4px 0; font-size: 1.02rem; font-weight: 700; color: {'#f8fafc' if is_dark_mode else '#0f172a'};">Hello! I'm the OptiVendor Store Manager Orchestrator.</h4>
+            <p style="margin: 0; font-size: 0.88rem; color: {'#94a3b8' if is_dark_mode else '#334155'};">I can help you with store inventory, out-of-stock scans, vendor negotiations, and automated procurement. Try one of the demo queries below or ask me anything.</p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
     # 5 Interactive Quick Action Cards Grid
     st.markdown("<p style='font-size:0.85rem; font-weight:700; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;'>⚡ Quick Action Cards</p>", unsafe_allow_html=True)
     c1, c2, c3, c4, c5 = st.columns(5)
     with c1:
-        if st.button("🔍 Check Store\nInventory", use_container_width=True, key="quick_1"):
+        if st.button("🔍 Check my store inventory\nSee all products and risk status", use_container_width=True, key="quick_1"):
             st.session_state["demo_query"] = "Check my store inventory"
             st.rerun()
     with c2:
-        if st.button("⚠️ Show Out\nof Stock", use_container_width=True, key="quick_2"):
+        if st.button("⚠️ Show out of stock items\nFind critical items (≤ 2 days)", use_container_width=True, key="quick_2"):
             st.session_state["demo_query"] = "Check my store inventory and find which items are out of stock"
             st.rerun()
     with c3:
-        if st.button("📅 What's Expiring\nSoon?", use_container_width=True, key="quick_3"):
+        if st.button("📅 What's expiring soon?\nItems expiring in 7 days", use_container_width=True, key="quick_3"):
             st.session_state["demo_query"] = "Which items are expiring soon?"
             st.rerun()
     with c4:
-        if st.button("🛒 Order 50\nOat Barista", use_container_width=True, key="quick_4"):
+        if st.button("🛒 Order 50 Oat Barista\nSmall order (auto-execute)", use_container_width=True, key="quick_4"):
             st.session_state["demo_query"] = "Order 50 units of Oat Barista Blend"
             st.rerun()
     with c5:
-        if st.button("⚡ Order 500\nOat Barista", use_container_width=True, key="quick_5"):
+        if st.button("🛒 Order 500 Oat Barista\nLarge order (with approval)", use_container_width=True, key="quick_5"):
             st.session_state["demo_query"] = "Order 500 units of Oat Barista Blend"
             st.rerun()
     
-    st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
 
     # Initialize session states
     if "chat_history" not in st.session_state:
@@ -861,7 +937,8 @@ with tab_chat:
 
     # Display chat history
     for msg in st.session_state["chat_history"]:
-        with st.chat_message(msg["role"]):
+        avatar_icon = "https://img.icons8.com/color/96/bot.png" if msg["role"] == "assistant" else "👤"
+        with st.chat_message(msg["role"], avatar=avatar_icon):
             st.markdown(msg["content"])
 
     # --- HUMAN-IN-THE-LOOP APPROVAL UI ---
@@ -985,10 +1062,10 @@ with tab_chat:
     
     if user_query:
         st.session_state["chat_history"].append({"role": "user", "content": user_query})
-        with st.chat_message("user"):
+        with st.chat_message("user", avatar="👤"):
             st.markdown(user_query)
 
-        with st.chat_message("assistant"):
+        with st.chat_message("assistant", avatar="https://img.icons8.com/color/96/bot.png"):
             with st.status("🧠 **Orchestrator Executing Multi-Agent Graph...**", expanded=True) as status_box:
                 status_box.write("🛠️ **Executing Tool:** `orchestrator_node` (Intent Classification)")
                 time.sleep(0.3)
