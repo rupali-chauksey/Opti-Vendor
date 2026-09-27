@@ -319,7 +319,7 @@ with st.sidebar:
     st.divider()
     st.markdown("""
     <div style="text-align: center; font-size: 0.85rem; color: #64748b; font-weight: 500;">
-        👩‍💻 Developed with ❤️ by<br><b style="color: #0f172a; font-size: 0.95rem;">Rupali Chauksey</b>
+        👩‍💻 Developed by<br><b style="color: #0f172a; font-size: 0.95rem;">Rupali Chauksey</b>
     </div>
     """, unsafe_allow_html=True)
 
@@ -742,6 +742,6 @@ with tab_pos:
 # -------------------------------------------------------------
 st.markdown("""
 <div style="text-align: center; margin-top: 50px; padding: 20px 0 10px 0; border-top: 1px solid #e2e8f0; color: #64748b; font-size: 0.95rem; font-weight: 500;">
-    👩‍💻 Developed with ❤️ by <b style="color: #0f172a;">Rupali Chauksey</b> &nbsp;|&nbsp; 📦 <b>OptiVendor Enterprise Platform</b>
+    👩‍💻 Developed by <b style="color: #0f172a;">Rupali Chauksey</b> &nbsp;|&nbsp; 📦 <b>OptiVendor Enterprise Platform</b>
 </div>
 """, unsafe_allow_html=True)
