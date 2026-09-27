@@ -15,6 +15,18 @@ from database import init_database
 from tools import query_inventory, fetch_vendors, send_a2a_rfq, execute_order
 from agents import veganflow_pipeline
 
+# Auto-initialize SQLite database on Cloud Deployment if missing
+try:
+    conn = sqlite3.connect("veganflow_store.db")
+    cur = conn.cursor()
+    cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='inventory'")
+    has_table = cur.fetchone()
+    conn.close()
+    if not has_table:
+        init_database()
+except Exception:
+    init_database()
+
 st.set_page_config(
     page_title="OptiVendor | Autonomous Multi-Agent Procurement System",
     page_icon="📦",
