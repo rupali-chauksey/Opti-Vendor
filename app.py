@@ -972,6 +972,19 @@ with tab_chat:
     for msg in st.session_state["chat_history"]:
         avatar_icon = "https://img.icons8.com/color/96/bot.png" if msg["role"] == "assistant" else "👤"
         with st.chat_message(msg["role"], avatar=avatar_icon):
+            if msg.get("trace_steps"):
+                with st.expander("🛠️ View Multi-Agent Execution Graph & Tool Traces (Open/Hide)", expanded=False):
+                    for step in msg["trace_steps"]:
+                        if "Orchestrator" in step:
+                            st.markdown(f"🧠 **[Node 1: Intent Orchestrator]** `{step}`")
+                        elif "Shelf Monitor" in step:
+                            st.markdown(f"📊 **[Node 2: Shelf Monitor Agent]** `{step}`")
+                        elif "A2A" in step or "RFQ" in step or "Negotiation" in step:
+                            st.markdown(f"💬 **[Node 3: Autonomous A2A Negotiator]** `{step}`")
+                        elif "Budget" in step or "Guard" in step or "Execution" in step:
+                            st.markdown(f"🛡️ **[Node 4: Safety Guardrails Engine]** `{step}`")
+                        else:
+                            st.markdown(f"⚙️ **[Graph Step]** `{step}`")
             st.markdown(msg["content"])
 
     # --- HUMAN-IN-THE-LOOP APPROVAL UI ---
@@ -1137,7 +1150,11 @@ with tab_chat:
 
             reply = result.get("final_response", "Request completed.")
             st.markdown(reply)
-            st.session_state["chat_history"].append({"role": "assistant", "content": reply})
+            st.session_state["chat_history"].append({
+                "role": "assistant",
+                "content": reply,
+                "trace_steps": result.get("trace_steps", [])
+            })
             
             # --- CHECK IF HUMAN APPROVAL IS NEEDED ---
             if result.get("human_approval_needed") and result.get("agreed_deal"):
