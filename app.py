@@ -736,33 +736,19 @@ else:
     </style>
     """, unsafe_allow_html=True)
 
-# Top Header with Status Pill & Top-Right Reset Button
+# Top Header with Status Pill
 badge_style = "background: #064e3b; border: 1px solid #10b981; color: #34d399;" if is_dark_mode else "background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d;"
-
-head_col1, head_col2 = st.columns([3, 1])
-with head_col1:
-    st.markdown(f"""
-    <div class="hero-header" style="margin-bottom: 16px;">
+st.markdown(f"""
+<div class="hero-header" style="display: flex; justify-content: space-between; align-items: center;">
+    <div>
         <div class="hero-title">📦 OptiVendor Enterprise</div>
         <div class="hero-subtitle">Autonomous Multi-Agent Inventory Procurement, A2A Negotiation & POS Inventory Control</div>
     </div>
-    """, unsafe_allow_html=True)
-with head_col2:
-    st.markdown(f"""
-    <div style="display: flex; justify-content: flex-end; align-items: center; margin-top: 4px; margin-bottom: 8px;">
-        <div style="{badge_style} font-size: 0.8rem; font-weight: 700; padding: 4px 12px; border-radius: 20px;">
-            ● Orchestrator online
-        </div>
+    <div style="{badge_style} font-size: 0.82rem; font-weight: 700; padding: 6px 14px; border-radius: 20px; display: flex; align-items: center; gap: 6px;">
+        ● Orchestrator online
     </div>
-    """, unsafe_allow_html=True)
-    if st.button("⚠️ Reset POS Database", use_container_width=True, key="reset_db_top_corner"):
-        init_database()
-        st.session_state["chat_history"] = [
-            {"role": "assistant", "content": "Database reset! Ready for fresh demo."}
-        ]
-        st.session_state["pending_approval"] = None
-        st.success("Database restored!")
-        st.rerun()
+</div>
+""", unsafe_allow_html=True)
 
 # Sidebar with Demo Scenarios
 with st.sidebar:
@@ -832,12 +818,23 @@ def get_inventory_table():
     )
     return df
 
-# 3 Minimalist Tabs
-tab_warroom, tab_chat, tab_pos = st.tabs([
-    "🚀 Live Visual War Room",
-    "🤖 Multi-Agent Chat Terminal",
-    "📦 Live Store Inventory & POS"
-])
+# 3 Minimalist Tabs with Right Corner Reset POS Database Button
+tab_row_left, tab_row_right = st.columns([3.6, 1.0])
+with tab_row_left:
+    tab_warroom, tab_chat, tab_pos = st.tabs([
+        "🚀 Live Visual War Room",
+        "🤖 Multi-Agent Chat Terminal",
+        "📦 Live Store Inventory & POS"
+    ])
+with tab_row_right:
+    if st.button("⚠️ Reset POS Database", use_container_width=True, key="reset_db_tab_row_corner"):
+        init_database()
+        st.session_state["chat_history"] = [
+            {"role": "assistant", "content": "Database reset! Ready for fresh demo."}
+        ]
+        st.session_state["pending_approval"] = None
+        st.success("Database restored!")
+        st.rerun()
 
 # -------------------------------------------------------------
 # TAB 1: LIVE VISUAL WAR ROOM (STEP-BY-STEP VISUAL SIMULATION)
