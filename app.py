@@ -48,7 +48,7 @@ with st.sidebar:
         """,
         unsafe_allow_html=True
     )
-    st.markdown("### 🎨 Theme Mode")
+    st.markdown("### Theme Mode")
     theme_choice = st.selectbox(
         "Select Interface Theme:",
         ["🌙 Control Tower (Dark)", "☀️ Enterprise (Light)"],
@@ -101,6 +101,29 @@ if is_dark_mode:
         }
         section[data-testid="stSidebar"] * {
             color: #e2e8f0 !important;
+        }
+        
+        /* High-Contrast Selectbox Styling for Dark Mode */
+        div[data-testid="stSelectbox"] div[data-baseweb="select"],
+        div[data-testid="stSelectbox"] div[role="combobox"],
+        div[data-testid="stSelectbox"] [data-baseweb="select"] > div {
+            background-color: #1e293b !important;
+            border: 1px solid #334155 !important;
+            border-radius: 10px !important;
+        }
+        div[data-testid="stSelectbox"] div[data-baseweb="select"] *,
+        div[data-testid="stSelectbox"] div[role="combobox"] *,
+        div[data-testid="stSelectbox"] [data-baseweb="select"] span,
+        div[data-testid="stSelectbox"] [data-baseweb="select"] div {
+            color: #f8fafc !important;
+            fill: #f8fafc !important;
+        }
+        div[data-baseweb="popover"] ul {
+            background-color: #0f172a !important;
+        }
+        div[data-baseweb="popover"] li, div[data-baseweb="popover"] li * {
+            color: #f8fafc !important;
+            background-color: transparent !important;
         }
         
         /* Hero Header Banner */
@@ -454,13 +477,29 @@ else:
             max-width: 100% !important;
         }
 
-        /* Full Page Background */
-        .stApp {
-            background-color: #f5f7fa !important;
-            background-image: radial-gradient(#e2e8f0 1px, transparent 1px) !important;
-            background-size: 24px 24px !important;
-            color: #0f172a;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        /* Sidebar Styling */
+        section[data-testid="stSidebar"] {
+            background-color: #f8fafc !important;
+            border-right: 1px solid #e2e8f0 !important;
+        }
+        section[data-testid="stSidebar"] * {
+            color: #0f172a !important;
+        }
+        
+        /* Selectbox High Contrast Styling for Light Mode */
+        div[data-testid="stSelectbox"] div[data-baseweb="select"],
+        div[data-testid="stSelectbox"] div[role="combobox"],
+        div[data-testid="stSelectbox"] [data-baseweb="select"] > div {
+            background-color: #ffffff !important;
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 10px !important;
+        }
+        div[data-testid="stSelectbox"] div[data-baseweb="select"] *,
+        div[data-testid="stSelectbox"] div[role="combobox"] *,
+        div[data-testid="stSelectbox"] [data-baseweb="select"] span,
+        div[data-testid="stSelectbox"] [data-baseweb="select"] div {
+            color: #0f172a !important;
+            fill: #0f172a !important;
         }
         
         /* Global Typography */
