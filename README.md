@@ -1,158 +1,359 @@
 # OptiVendor
-### Autonomous Multi-Agent Inventory Procurement & Negotiation System
-
-OptiVendor is a multi-agent system that autonomously detects stockout risks, negotiates with vendors via Agent-to-Agent (A2A) protocol, and executes procurement decisions with deterministic guardrails and human-in-the-loop governance.
+**Autonomous Multi-Agent Inventory Procurement & Negotiation System**
 
 ---
 
-## 📋 Problem Statement
+## 🎬 LIVE DEMO — TRY IT NOW
 
-Retail supply chains face two critical operational failures:
+**👉 [Live Application](https://opti-vendor.streamlit.app/)**
 
-**1. Reactive Stockouts**
-High-velocity products run out unexpectedly. Traditional systems only send alerts — they don't act. Store managers manually check spreadsheets and call vendors.
+**Try these 3 scenarios in 2 minutes:**
 
-**2. Over-Purchasing & Waste**
-Manual procurement over-orders perishable goods, blocking capital and creating waste. No intelligent reorder optimization.
+1. **Detect Stockout Risk** — Type: `"Check my store inventory"`
+   - System identifies critical stock items
+   - Shows Days of Supply calculation
 
-**Root Cause:** Procurement is fragmented, reactive, and manual. Decisions take hours when they should take minutes.
+2. **Small Order Auto-Execute** — Type: `"Order 50 units of Oat Barista Blend"`
+   - Agent negotiates with vendor
+   - Order executes automatically (< $500)
+   - Total cost: $157.50
 
----
-
-## Demo Linlk
-
-https://opti-vendor-unkmmdjpp3udeqrsdpxqds.streamlit.app/
-
-
-## ✨ Solution
-
-OptiVendor closes the loop. It autonomously:
-
-1. **🔍 Detects** — Monitors inventory, calculates Days of Supply, triggers reorder signals
-2. **💬 Negotiates** — Runs multi-round A2A negotiations with vendors
-3. **🛡️ Validates** — Applies deterministic guardrails (budget, overstocking, loop limit)
-4. **✅ Executes** — Places orders automatically OR routes to human approval
-5. **📋 Audits** — Logs every decision to `approval_log.txt` for compliance
-
-**What takes a manager 30 minutes, OptiVendor does in 3 seconds.**
+3. **Large Order With Guardrails** — Type: `"Order 500 units of Oat Barista Blend"` → Click Approve
+   - Budget Guard triggers ($1,575 > $500)
+   - Manager approves
+   - Overstocking Guard reduces to 88 units
+   - Final order: $277.20 (vs $1,575 requested)
 
 ---
 
-## 🏗️ Architecture — LangGraph 5-Node State Machine
+## ✨ The Problem 
+
+**Retail inventory management is broken:**
+- Stockouts happen because managers react, not prevent
+- Over-ordering wastes capital on perishables
+- Manual spreadsheet process takes 30+ minutes per decision
+
+**What OptiVendor does:**
+- Detects risk automatically
+- Negotiates with vendors autonomously
+- Executes orders in **3 seconds** with safety guardrails
+- Every decision logged for compliance
+
+---
+
+## 🎯 What You're Looking At (This Project)
+
+A **production-grade multi-agent system** that combines:
+
+✅ **Autonomous Agent-to-Agent Negotiation** — LLM runs multi-round vendor negotiations  
+✅ **Deterministic Guardrails** — Budget, overstocking, and loop limits enforced in Python code (not prompts)  
+✅ **Human-in-the-Loop Approval** — Managers approve large orders (> $500) before execution  
+✅ **Layered Defense** — Multiple independent safety checks prevent failures  
+✅ **Full Audit Trail** — Every decision logged to `approval_log.txt`  
+
+---
+
+## 📊 Live Testing Evidence (9 Screenshots)
+
+**All scenarios have been validated with screenshots below.**
+
+### Test 1: Specific Product Query ✅
+![Test 1](screenshots/test1_specific_product.png)
+
+**What You See:** System queries "Vegan Jumbo Shrimp" and returns 5 units in stock, 1 unit/day velocity, OPTIMAL status.  
+**Why It Matters:** Entity extraction works correctly — agent understands what product you're asking about.
+
+---
+
+### Test 2: Proactive Risk Detection ✅
+![Test 2](screenshots/test2_out_of_stock.png)
+
+**What You See:** When asked "Check inventory," system identifies Oat Barista Blend as critical (0.8 days remaining).  
+**Why It Matters:** Agent thinks beyond literal query — proactively identifies risks before you ask.
+
+---
+
+### Test 3: Waste Prevention ✅
+![Test 3](screenshots/test3_expiring_soon.png)
+
+**What You See:** System identifies 3 items expiring soon with exact dates.  
+**Why It Matters:** Prevents waste and capital blockage — money saved by not buying about-to-expire stock.
+
+---
+
+### Test 4: Small Order Auto-Execute ✅
+![Test 4](screenshots/test4_small_order.png)
+
+**What You See:**
+- Query: "Order 50 units of Oat Barista Blend"
+- Agent negotiates: $3.15/unit
+- Total: $157.50 (< $500 budget)
+- Status: EXECUTED AUTOMATICALLY
+
+**Why It Matters:** Low-risk orders execute instantly. No waiting for approval. No manual intervention.
+
+---
+
+### Test 5: Overstocking Guard ✅
+![Test 5](screenshots/test5_overstocking.png)
+
+**What You See:**
+- Requested: 50 units of Almond Milk
+- Actual Ordered: 15 units
+- Reason: Target (60) - Current (45) = 15 max available
+
+**Why It Matters:** Even if you request too much, system prevents waste. Protects capital. Hits exact target stock.
+
+---
+
+### Test 6: Budget Guard Trigger ✅
+![Test 6](screenshots/test6_budget_guard.png)
+
+**What You See:**
+- Query: "Order 200 units of Cultured Truffle Brie"
+- Original Cost: $1,656 (200 × $8.28)
+- Budget Threshold: $500
+- Result: APPROVAL CARD SHOWN (order paused)
+
+**Why It Matters:** Large financial decisions require human review. System enforces business rule automatically.
+
+---
+
+### Test 7: Approval Flow ✅
+![Test 7](screenshots/test7_approve_flow.png)
+
+**What You See:**
+- Manager clicks ✅ APPROVE
+- System applies Overstocking Guard
+- Requested 200 → Executed 22 units
+- Total Cost: $182.16 (vs $1,656 requested)
+
+**Why It Matters:** LAYERED DEFENSE — Even after approval, second guard prevents over-ordering.
+
+---
+
+### Test 8: Rejection Flow ✅
+![Test 8](screenshots/test8_reject_flow.png)
+
+**What You See:**
+- Manager clicks ❌ REJECT
+- Order cancelled
+- Audit log entry created
+
+**Why It Matters:** Manager can override agent. Full control. Full transparency.
+
+---
+
+### Test 9: Layered Defense in Action ✅
+![Test 9](screenshots/test9_layered_defense.png)
+
+**What You See:**
+- Query: "Order 500 units of Oat Barista Blend"
+- Original Value: $1,575
+- Budget Guard: Paused for approval
+- Manager Approves
+- Overstocking Guard: Reduces 500 → 88 units
+- Final Executed: 88 units @ $3.15 = $277.20
+
+**Why It Matters:** THIS IS THE CORE MAGIC — Two guardrails fire in sequence independently.
+
+---
+
+## 🏗️ How It Works (Architecture)
 
 ```text
-┌───────────────────────────────────────────────────────────────┐
-│                       ORCHESTRATOR NODE                       │
-│ • Intent Classification (CHECK_STOCK / NEGOTIATE_RESTOCK)     │
-│ • Entity Extraction (product name from query)                 │
-│ • Quantity Extraction (regex-based number parsing)            │
-└─────────────────────────────┬─────────────────────────────────┘
-                              │
-             ┌────────────────┴─────────────────────┐
-             ▼                                      ▼
-┌──────────────────────┐              ┌──────────────────────────┐
-│  SHELF MONITOR NODE  │              │     NEGOTIATION NODE     │
-│ • Query inventory    │              │ • Fetch vendors          │
-│ • Days of Supply     │              │ • A2A RFQ handshake      │
-│ • Risk detection     │              │ • Multi-round loop      │
-└──────────┬───────────┘              │ • Max 3 iterations       │
-           │                          └────────────┬─────────────┘
-           │                                       │
-           │                                       ▼
-           │                          ┌──────────────────────────┐
-           │                          │      EXECUTION NODE      │
-           │                          │ • Budget Guard           │
-           │                          │ • Overstocking Guard     │
-           │                          │ • Human Approval (HITL)  │
-           │                          └────────────┬─────────────┘
-           │                                       │
-           └──────────────────┬────────────────────┘
-                              ▼
-               ┌──────────────────────────┐
-               │  OUTPUT FORMATTER NODE   │
-               │ • Natural language       │
-               │ • Never raw JSON         │
-               └──────────────────────────┘
+User Query
+    ↓
+[ORCHESTRATOR NODE]
+├─ What are you asking? (intent)
+├─ Which product? (entity extraction)
+└─ How many? (quantity parsing)
+    ↓
+    ├─────────────────┬──────────────────┐
+    ↓                 ↓                  ↓
+[SHELF MONITOR]  [NEGOTIATION NODE]  [if needed]
+├─ Current stock   ├─ Find vendors
+├─ Days of Supply  ├─ Multi-round talks
+└─ Risk check      └─ Max 3 rounds
+    ↓                 ↓
+    └────────────┬────┘
+                 ↓
+         [EXECUTION NODE]
+         ├─ Budget Guard? (> $500)
+         ├─ Human Approval? (if yes)
+         ├─ Overstocking Guard? (reduce qty)
+         └─ Execute → Database
+                 ↓
+         [OUTPUT FORMATTER]
+         └─ Natural language response
 ```
 
 ---
 
-## 🛡️ Three Guardrails — Deterministic Defense
+## 🛡️ The Three Guardrails (The Secret Sauce)
 
-All guardrails are enforced in **Python code**, not in LLM prompts. This guarantees 100% reliability regardless of model behavior.
+All three are **Python code, not LLM prompts.** This means they ALWAYS work, no exceptions.
 
-### 1. Loop Guard
-- **Rule:** Maximum 3 tool calls per query
-- **Purpose:** Prevents infinite negotiation loops
-- **Location:** `negotiation_node()` in `agents.py`
-
-### 2. Budget Guard
-- **Rule:** Orders exceeding **$500** require Human Approval
-- **Purpose:** Prevents autonomous execution of large financial decisions
-- **Location:** `execution_node()` in `agents.py`
-- **Key Detail:** Checks the **ORIGINAL requested value**, not the post-reduction value
-
-### 3. Overstocking Guard
-- **Rule:** Order quantity capped at `Target Stock - Current Stock`
-- **Purpose:** Prevents over-ordering and capital blockage
-- **Location:** `execute_order()` in `tools.py`
-
-### 🎯 Layered Defense in Action
-
-When both guardrails fire together:
-User Request: Order 500 units of Oat Barista Blend
-(500 × $3.15 = $1,575)
-
+### Guard 1: Loop Guard
 ```text
-▼
-┌──────────────────────────────────────┐
-│        LAYER 1: Budget Guard         │
-│       $1,575 > $500 threshold        │
-│   → HUMAN APPROVAL REQUIRED          │
-└────────────────┬─────────────────────┘
-                 │
-                 │ Manager clicks ✅ Approve
-                 ▼
-┌──────────────────────────────────────┐
-│     LAYER 2: Overstocking Guard      │
-│     Target (100) - Current (12) = 88 │
-│   → Order reduced from 500 to 88     │
-└────────────────┬─────────────────────┘
-                 │
-                 ▼
-Final: 88 units @ $3.15 = $277.20
-New Stock Level: 100 units (target hit)
+Rule: Maximum 3 negotiation rounds per query
+Location: agents.py → negotiation_node()
+Why: Prevents infinite loops, controls token cost
 ```
 
-Even after manager approval, the second layer still prevents overstocking.
+### Guard 2: Budget Guard
+```text
+Rule: Orders > $500 require human approval
+Location: agents.py → execution_node()
+Why: Prevents large autonomous financial decisions
+Key Detail: Checks ORIGINAL value, not reduced value
+           (So manager sees true scope)
+```
+
+### Guard 3: Overstocking Guard
+```text
+Rule: Order quantity capped at (Target - Current)
+Location: tools.py → execute_order()
+Why: Prevents over-ordering, capital blockage, waste
+```
+
+### How They Work Together
+
+```text
+SCENARIO: Order 500 units @ $3.15 = $1,575
+
+Step 1 — Budget Guard fires
+├─ $1,575 > $500
+└─ Result: PAUSE for human approval
+
+Step 2 — Manager approves
+└─ Result: PROCEED
+
+Step 3 — Overstocking Guard fires
+├─ Available capacity = Target (100) - Current (12) = 88
+└─ Result: Reduce quantity from 500 to 88 units
+
+Step 4 — Execute
+├─ Final quantity: 88 units
+├─ Final cost: 88 × $3.15 = $277.20
+├─ New stock level: 100 units (target hit exactly)
+└─ Audit log entry: Created ✓
+```
 
 ---
 
-## 👤 Human-in-the-Loop (HITL) Approval
+## 🎬 Demo Scenarios (Quick Reference)
 
-When an order exceeds $500, the system pauses and shows an approval card in the Streamlit UI.
+| Scenario | Query | What Happens | Why It Matters |
+|----------|-------|--------------|----------------|
+| 1 | "Check stock for Vegan Jumbo Shrimp" | Returns 5 units, OPTIMAL | Entity extraction working |
+| 2 | "Check my store inventory" | Identifies critical items | Proactive risk detection |
+| 3 | "Which items expiring soon?" | Lists 3 items with dates | Waste prevention |
+| 4 | "Order 50 units Oat Barista" | $157.50 auto-executed | Small orders instant |
+| 5 | "Order 50 units Almond Milk" | Reduced to 15 units | Guard prevents waste |
+| 6 | "Order 200 units Truffle Brie" | $1,656 approval card | Large orders need approval |
+| 7 | "Order 500 units Oat Barista" → Approve | 500 → 88 units executed | Both guards work together |
 
-### Order Details Card
+---
 
-| Field | Example |
-|-------|---------|
-| Product | Oat Barista Blend |
-| Vendor | Clark Distributing |
-| Requested Quantity | 500 units |
-| Unit Price | $3.15 |
-| **Original Order Value** | **$1,575.00** *(highlighted)* |
-| Delivery Window | 2 days |
+## 🖥️ The Application (3 Tabs)
 
-### Decision Controls
-- ✅ **Approve Order** — Executes (with Overstocking Guard applied)
-- ❌ **Reject Order** — Cancels, no action taken
+### Tab 1: Live Visual War Room
+Real-time animation of the entire procurement pipeline:
+- Step 1: Inventory scan
+- Step 2: Memory load
+- Step 3: Vendor discovery
+- Step 4: Negotiation handshake
+- Step 5: Atomic execution
 
-### Audit Trail
-Every decision is logged to `approval_log.txt`:
+### Tab 2: Chat Terminal
+Natural language interface with:
+- Live tool traces
+- Approval cards (when needed)
+- Chat history
+- Sidebar demo buttons (1-click scenarios)
+
+### Tab 3: Live Inventory Database
+Real-time SQLite view with:
+- Current stock levels
+- Days of Supply
+- Health status (CRITICAL/LOW/OPTIMAL)
+- Color-coded alerts
+- Live updates after each order
+
+---
+
+## 💡 Key Design Decisions (Why This Works)
+
+### Decision 1: Guardrails in Code, Not Prompts
 ```text
-2026-09-26 20:45:12 | APPROVED | Oat Barista Blend | Requested: 500 | Executed: 88 | Total: $277.20
-2026-09-26 20:50:30 | REJECTED | Oat Barista Blend | 500 units | Total: $1575.00
+Wrong approach:
+  "Please never spend more than $500"
+  ↓ (LLM can ignore this)
+
+Right approach:
+  if order_cost > 500:
+      requires_approval = True
+  ↓ (Code always enforces)
 ```
+
+### Decision 2: Check Original Value, Not Reduced Value
+```text
+Request: 500 units @ $3.15 = $1,575
+
+Wrong way:
+  └─ Reduce to 88 units first
+  └─ Check: 88 × $3.15 = $277 < $500
+  └─ Execute automatically (manager never sees $1,575)
+
+Right way:
+  └─ Check original: $1,575 > $500
+  └─ Pause for approval (manager sees true scope)
+  └─ After approval, reduce to 88 units
+```
+
+### Decision 3: Layered Defense
+Multiple independent guards catch different failure modes:
+- Guard 1 stops large unauthorized orders
+- Guard 2 confirms with human
+- Guard 3 prevents physical overstocking
+
+### Decision 4: Audit Everything
+Every approval, rejection, and execution logged to `approval_log.txt`:
+```text
+2026-09-26 20:45:12 | APPROVED | Oat Barista | 500 → 88 units | $277.20
+2026-09-26 20:50:30 | REJECTED | Truffle Brie | 200 units | $1,656
+```
+
+---
+
+## 📦 Installation (5 Minutes)
+
+```bash
+# 1. Clone
+git clone https://github.com/rupali-chauksey/Opti-Vendor.git
+cd Opti-Vendor
+
+# 2. Virtual environment
+python -m venv venv
+source venv/bin/activate        # macOS/Linux
+# venv\Scripts\activate         # Windows
+
+# 3. Install
+pip install -r requirements.txt
+
+# 4. Get LLM models (if using Ollama locally)
+ollama pull qwen2.5:7b
+ollama pull llama3.2
+
+# 5. Initialize database
+python database.py
+
+# 6. Run
+streamlit run app.py
+```
+
+**Open:** `http://localhost:8501`
 
 ---
 
@@ -160,201 +361,12 @@ Every decision is logged to `approval_log.txt`:
 
 | Component | Technology |
 |-----------|-----------|
-| **Agent Orchestration** | LangGraph StateGraph + MemorySaver |
-| **Local LLM** | Ollama (qwen2.5:7b + llama3.2) |
-| **Database** | SQLite (`veganflow_store.db`) |
-| **UI Framework** | Streamlit |
-| **Data Processing** | Pandas |
-| **Language** | Python 3.10+ |
-
----
-
-## 📦 Installation
-
-### Prerequisites
-- Python 3.10 or higher
-- Ollama installed and running (`ollama serve`)
-- Ollama models pulled: `qwen2.5:7b` and `llama3.2`
-
-### Setup Instructions
-
-```bash
-# 1. Clone the repository
-git clone https://github.com/rupali-chauksey/SupplyChain.git
-cd SupplyChain
-
-# 2. Create virtual environment
-python -m venv venv
-source venv/bin/activate          # macOS/Linux
-# venv\Scripts\activate           # Windows
-
-# 3. Install dependencies
-pip install -r requirements.txt
-
-# 4. Pull Ollama models
-ollama pull qwen2.5:7b
-ollama pull llama3.2
-
-# 5. Initialize the database
-python database.py
-
-# 6. Launch the application
-streamlit run app.py
-```
-App will be available at: **`http://localhost:8501`**
-
----
-
-## 🎬 Demo Scenarios
-
-The sidebar contains 7 pre-built demo buttons for live demonstration.
-
-### 📊 Basic Queries — No Approval Required
-| # | Demo | Query | Expected Result |
-|---|---|---|---|
-| 1 | Specific Product | `"Check stock for Vegan Jumbo Shrimp"` | 5 units, OPTIMAL |
-| 2 | Out of Stock | `"Check my store inventory..."` | Oat Barista critical risk |
-| 3 | Expiring Soon | `"Which items are expiring soon?"` | 3 items with dates |
-
-### 🟢 Small Orders — Auto-Execute (Under $500)
-| # | Demo | Query | Expected Result |
-|---|---|---|---|
-| 4 | Small Order | `"Order 50 units of Oat Barista Blend"` | $157.50 — auto-executed |
-| 5 | Overstocking Reduce | `"Order 50 units of Almond Milk"` | Reduced to 15 units |
-
-### 🟠 Large Orders — Human Approval Required (Over $500)
-| # | Demo | Query | Expected Result |
-|---|---|---|---|
-| 6 | Budget Guard | `"Order 200 units of Cultured Truffle Brie"` | $1,656 approval card |
-| 7 | Layered Defense | `"Order 500 units of Oat Barista Blend"` | $1,575 → 88 units |
-
----
-
-## 📸 Test Evidence — Live Screenshots
-
-### ✅ Test 1: Specific Product Query
-![Test 1 — Specific Product](screenshots/test1_specific_product.png)
-
-**Query:** `Check stock for Vegan Jumbo Shrimp`
-**Result:** 5 units, 1 unit/day velocity, OPTIMAL health status
-**Proves:** Entity extraction + specific product filter works correctly
-
----
-
-### ✅ Test 2: Out of Stock Detection
-![Test 2 — Out of Stock](screenshots/test2_out_of_stock.png)
-
-**Query:** `Check my store inventory and find which items are out of stock`
-**Result:** No items fully out of stock, but Oat Barista Blend identified as critical risk (0.8 days remaining)
-**Proves:** Proactive reasoning — agent detects risks beyond the literal query
-
----
-
-### ✅ Test 3: Expiring Soon Detection
-![Test 3 — Expiring Soon](screenshots/test3_expiring_soon.png)
-
-**Query:** `Which items are expiring soon?`
-**Result:** 3 items identified with exact expiry dates (Vanilla Coconut Yogurt, Cultured Truffle Brie, Artisanal Organic Tempeh)
-**Proves:** Waste prevention via expiry tracking
-
----
-
-### ✅ Test 4: Small Order Auto-Execute
-![Test 4 — Small Order](screenshots/test4_small_order.png)
-
-**Query:** `Order 50 units of Oat Barista Blend`
-**Result:**
-- A2A Negotiation: $3.15/unit (savings $13.50)
-- Total PO Cost: $157.50 (< $500, no approval needed)
-- Executed automatically
-- New stock: 62 units
-**Proves:** Small orders execute autonomously without human intervention
-
----
-
-### ✅ Test 5: Overstocking Guard
-![Test 5 — Overstocking Reduce](screenshots/test5_overstocking.png)
-
-**Query:** `Order 50 units of Almond Milk Unsweetened`
-**Result:**
-- Requested: 50 units
-- Actual Ordered: 15 units (reduced by Overstocking Guard)
-- Reason: Target (60) - Current (45) = 15 units max
-- New stock: 60 units
-**Proves:** System prevents over-ordering, protects capital
-
----
-
-### ✅ Test 6: Budget Guard — Human Approval Required
-![Test 6 — Budget Guard](screenshots/test6_budget_guard.png)
-
-**Query:** `Order 200 units of Cultured Truffle Brie`
-**Result:**
-- Original order value: $1,656 (200 × $8.28)
-- Exceeds $500 threshold
-- Approval card displayed with Approve/Reject buttons
-- Order paused pending manager decision
-**Proves:** Large financial decisions require human approval
-
----
-
-### ✅ Test 7: Approve Flow — Layered Defense
-![Test 7 — Approve Flow](screenshots/test7_approve_flow.png)
-
-**Action:** Manager clicks ✅ Approve on Test 6's pending order
-**Result:**
-- Requested Quantity: 200 units
-- Actual Ordered Quantity: 22 units (reduced by Overstocking Guard)
-- Reason: Target (30) - Previous (8) = 22 units max allowed
-- Total PO Cost: $182.16 (vs $1,656 requested)
-**Proves:** Even after approval, second layer prevents overstocking
-
----
-
-### ✅ Test 8: Reject Flow
-![Test 8 — Reject Flow](screenshots/test8_reject_flow.png)
-
-**Action:** Manager clicks ❌ Reject on pending order
-**Result:** Order cancelled, no action taken, audit log entry created
-**Proves:** Manager can override agent decisions, full audit trail
-
----
-
-### ✅ Test 9: Layered Defense — Budget + Overstocking
-![Test 9 — Layered Defense](screenshots/test9_layered_defense.png)
-
-**Query:** `Order 500 units of Oat Barista Blend` → Manager clicks ✅ Approve
-**Result:**
-- Requested: 500 units ($1,575)
-- Actual Ordered: 88 units ($277.20)
-- New Stock Level: 100 units (target hit)
-**Proves:** Two guards fire in sequence — Budget then Overstocking
-
----
-
-## 🖥️ Application Interface
-
-### Tab 1: 🚀 Live Visual War Room
-Real-time step-by-step visualization:
-- Step 1: Shelf Monitor scans inventory
-- Step 2: Strategic Memory loads budget rules
-- Step 3: Vendor marketplace discovery
-- Step 4: A2A Negotiation handshake (buyer ↔ vendor)
-- Step 5: Atomic POS execution + database update
-
-### Tab 2: 🤖 Multi-Agent Chat Terminal
-Natural language interface:
-- Live tool execution trace
-- Human-in-the-Loop approval cards
-- Persistent chat history
-- Sidebar demo buttons for auto-run
-
-### Tab 3: 📦 Live Store Inventory & POS
-Real-time SQLite database view:
-- Days of Supply computation
-- Health Status (CRITICAL / LOW / OPTIMAL)
-- Color-coded alerts
-- Live updates after each order
+| Orchestration | LangGraph StateGraph |
+| LLM | Ollama (qwen2.5:7b, llama3.2) |
+| Database | SQLite |
+| Frontend | Streamlit |
+| Data | Pandas |
+| Language | Python 3.10+ |
 
 ---
 
@@ -362,62 +374,38 @@ Real-time SQLite database view:
 
 ```text
 optivendor/
-├── app.py                    # Streamlit UI (3 tabs + sidebar demos)
-├── agents.py                 # LangGraph 5-node state machine
-├── tools.py                  # Database queries + A2A simulation
-├── database.py               # SQLite schema + seed data
-├── requirements.txt          # Python dependencies
-├── README.md                 # Project documentation
-├── agent_trace.log           # Runtime logs (auto-generated)
-├── approval_log.txt          # HITL audit trail (auto-generated)
-└── veganflow_store.db        # SQLite database (auto-generated)
+├── app.py                      # Streamlit UI
+├── agents.py                   # LangGraph state machine
+├── tools.py                    # Database + utilities
+├── database.py                 # SQLite schema
+├── requirements.txt            # Dependencies
+├── README.md                   # You are here
+├── agent_trace.log             # Auto-generated logs
+├── approval_log.txt            # Approval audit trail
+├── veganflow_store.db          # SQLite database
+└── screenshots/                # 9 test screenshots
 ```
 
 ---
 
 ## 🧪 Testing
 
-### Manual Testing (7 Scenarios)
-Use the sidebar demo buttons for live testing.
-
-### Evaluation Suite
 ```bash
-python evals.py
-```
-Runs 6 test cases:
-1. Out of Stock & Empty List Guardrail
-2. Critical Stockout Detection (< 1.0 day supply)
-3. Waste Risk & Expiring Soon Filter
-4. A2A Restock Negotiation (< $500 budget)
-5. Budget & Overstocking Guardrails Protection
-6. Specific Product Entity Extraction
+# Manual: Use sidebar demo buttons in app
 
-### Guardrail Unit Tests
-```bash
-python test_inventory_guardrails.py
+# Automated:
+python evals.py                           # 6 test cases
+python test_inventory_guardrails.py       # Unit tests
 ```
 
 ---
 
-## 💡 Key Design Decisions
+## 👩‍💻 Author & Maintainer
 
-### 1. Deterministic Guardrails over LLM Reasoning
-Guardrails are enforced in Python code, not in LLM prompts. If the LLM suggests an action that violates a guardrail, the code wins. This ensures 100% reliability.
+Developed by **Rupali Chauksey**
 
-### 2. Original Value Check for Budget Guard
-The Budget Guard checks the original requested value, not the reduced value. A 200-unit order at $8.28/unit ($1,656) triggers approval even if the Overstocking Guard would later reduce it to 22 units. This ensures the human sees the true scope of the request.
+---
 
-### 3. Layered Defense Architecture
-Multiple independent guardrails run in sequence. If one fails, another catches the issue:
-- Budget Guard $\rightarrow$ Human Approval
-- Overstocking Guard $\rightarrow$ Quantity Reduction
-- Loop Guard $\rightarrow$ Iteration Cap
-
-### 4. Audit-First Design
-Every decision (approval, rejection, execution) is logged to `approval_log.txt` and `agent_trace.log` for full traceability.
-
--
 ## 📝 License
-MIT License — see LICENSE file for details.
 
-*Status: Multi-agent prototype with 7 passing test scenarios and complete Human-in-the-Loop approval workflow.*
+MIT License — See LICENSE file
