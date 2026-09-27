@@ -40,7 +40,6 @@ if "app_theme" not in st.session_state:
 
 # Theme Selector in Sidebar (processed first)
 with st.sidebar:
-    st.image("https://img.icons8.com/color/96/bot.png", width=56)
     st.markdown("### 🎨 Theme Mode")
     theme_choice = st.selectbox(
         "Select Interface Theme:",
