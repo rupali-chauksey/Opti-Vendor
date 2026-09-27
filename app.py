@@ -590,9 +590,9 @@ with st.sidebar:
         st.rerun()
 
     st.divider()
-    st.markdown("""
-    <div style="text-align: center; font-size: 0.85rem; color: #64748b; font-weight: 500;">
-        👩‍💻 Developed by<br><b style="color: #0f172a; font-size: 0.95rem;">Rupali Chauksey</b>
+    st.markdown(f"""
+    <div style="text-align: center; font-size: 0.85rem; color: {'#94a3b8' if is_dark_mode else '#64748b'}; font-weight: 500;">
+        👩‍💻 Developed by<br><b style="color: {'#38bdf8' if is_dark_mode else '#0284c7'}; font-size: 0.95rem; font-weight: 700;">Rupali Chauksey</b>
     </div>
     """, unsafe_allow_html=True)
 
@@ -792,12 +792,57 @@ with tab_warroom:
 # TAB 2: MULTI-AGENT CHAT TERMINAL (WITH HITL APPROVAL + DEMO AUTO-RUN)
 # -------------------------------------------------------------
 with tab_chat:
-    st.markdown("""
-    <div class="optimizer-card">
-        <h4 style="margin-top:0; color:#0f172a; font-weight:700;">🤖 Multi-Agent Interactive Chat Terminal</h4>
-        <p style="color:#64748b; font-size:0.95rem; margin-bottom:0;">Chat directly with the <b>OptiVendor Store Manager Orchestrator</b>. Or click a demo button in the <b>sidebar</b> to auto-run.</p>
+    pill_inventory = "background: #064e3b; color: #34d399; border: 1px solid #10b981;" if is_dark_mode else "background: #dcfce7; color: #15803d; border: 1px solid #86efac;"
+    pill_negotiation = "background: #3b0764; color: #c084fc; border: 1px solid #a855f7;" if is_dark_mode else "background: #f3e8ff; color: #7e22ce; border: 1px solid #d8b4fe;"
+    pill_guardrails = "background: #0c4a6e; color: #38bdf8; border: 1px solid #0284c7;" if is_dark_mode else "background: #e0f2fe; color: #0369a1; border: 1px solid #7dd3fc;"
+    pill_execution = "background: #451a03; color: #fb923c; border: 1px solid #f97316;" if is_dark_mode else "background: #ffedd5; color: #c2410c; border: 1px solid #fed7aa;"
+    
+    st.markdown(f"""
+    <div class="optimizer-card" style="margin-bottom: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <div>
+                <h3 style="margin: 0; font-size: 1.35rem; font-weight: 800; display: flex; align-items: center; gap: 8px; color: {'#f8fafc' if is_dark_mode else '#0f172a'};">
+                    🤖 OptiVendor AI Assistant
+                </h3>
+                <p style="margin: 4px 0 0 0; font-size: 0.88rem; color: {'#94a3b8' if is_dark_mode else '#64748b'};">
+                    Your autonomous procurement partner • Powered by Multi-Agent AI
+                </p>
+            </div>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                <span style="{pill_inventory} font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 20px;">🛡️ Inventory Aware</span>
+                <span style="{pill_negotiation} font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 20px;">💜 Vendor Negotiation</span>
+                <span style="{pill_guardrails} font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 20px;">💙 Smart Guardrails</span>
+                <span style="{pill_execution} font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 20px;">🧡 Auto Execution</span>
+            </div>
+        </div>
     </div>
     """, unsafe_allow_html=True)
+
+    # 5 Interactive Quick Action Cards Grid
+    st.markdown("<p style='font-size:0.85rem; font-weight:700; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;'>⚡ Quick Action Cards</p>", unsafe_allow_html=True)
+    c1, c2, c3, c4, c5 = st.columns(5)
+    with c1:
+        if st.button("🔍 Check Store\nInventory", use_container_width=True, key="quick_1"):
+            st.session_state["demo_query"] = "Check my store inventory"
+            st.rerun()
+    with c2:
+        if st.button("⚠️ Show Out\nof Stock", use_container_width=True, key="quick_2"):
+            st.session_state["demo_query"] = "Check my store inventory and find which items are out of stock"
+            st.rerun()
+    with c3:
+        if st.button("📅 What's Expiring\nSoon?", use_container_width=True, key="quick_3"):
+            st.session_state["demo_query"] = "Which items are expiring soon?"
+            st.rerun()
+    with c4:
+        if st.button("🛒 Order 50\nOat Barista", use_container_width=True, key="quick_4"):
+            st.session_state["demo_query"] = "Order 50 units of Oat Barista Blend"
+            st.rerun()
+    with c5:
+        if st.button("⚡ Order 500\nOat Barista", use_container_width=True, key="quick_5"):
+            st.session_state["demo_query"] = "Order 500 units of Oat Barista Blend"
+            st.rerun()
+    
+    st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
 
     # Initialize session states
     if "chat_history" not in st.session_state:
