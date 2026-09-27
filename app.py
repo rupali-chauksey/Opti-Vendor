@@ -16,8 +16,8 @@ from tools import query_inventory, fetch_vendors, send_a2a_rfq, execute_order
 from agents import veganflow_pipeline
 
 st.set_page_config(
-    page_title="VeganFlow Enterprise | Autonomous Supply Chain Intelligence",
-    page_icon="🌱",
+    page_title="OptiVendor | Autonomous Multi-Agent Procurement System",
+    page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -243,8 +243,8 @@ st.markdown("""
 # Top Header
 st.markdown("""
 <div class="hero-header">
-    <div class="hero-title">🌱 VeganFlow Enterprise</div>
-    <div class="hero-subtitle">Autonomous Multi-Agent Supply Chain Intelligence, A2A Negotiation & POS Inventory Control</div>
+    <div class="hero-title">⚡ OptiVendor Enterprise</div>
+    <div class="hero-subtitle">Autonomous Multi-Agent Inventory Procurement, A2A Negotiation & POS Inventory Control</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -503,14 +503,14 @@ with tab_chat:
     st.markdown("""
     <div class="optimizer-card">
         <h4 style="margin-top:0; color:#0f172a; font-weight:700;">🤖 Multi-Agent Interactive Chat Terminal</h4>
-        <p style="color:#64748b; font-size:0.95rem; margin-bottom:0;">Chat directly with the <b>VeganFlow Store Manager Orchestrator</b>. Or click a demo button in the <b>sidebar</b> to auto-run.</p>
+        <p style="color:#64748b; font-size:0.95rem; margin-bottom:0;">Chat directly with the <b>OptiVendor Store Manager Orchestrator</b>. Or click a demo button in the <b>sidebar</b> to auto-run.</p>
     </div>
     """, unsafe_allow_html=True)
 
     # Initialize session states
     if "chat_history" not in st.session_state:
         st.session_state["chat_history"] = [
-            {"role": "assistant", "content": "Hello! I am the **VeganFlow Store Manager Orchestrator**. How can I assist with store inventory, out-of-stock scans, or automated restock negotiations today?"}
+            {"role": "assistant", "content": "Hello! I am the **OptiVendor Store Manager Orchestrator**. How can I assist with store inventory, out-of-stock scans, or automated restock negotiations today?"}
         ]
 
     if "pending_approval" not in st.session_state:
@@ -702,7 +702,7 @@ with tab_chat:
 with tab_pos:
     st.markdown("""
     <div class="optimizer-card">
-        <h4 style="margin-top:0; color:#0f172a; font-weight:700;">📦 Store POS Database State (<code>veganflow_store.db</code>)</h4>
+        <h4 style="margin-top:0; color:#0f172a; font-weight:700;">📦 OptiVendor POS Database State (<code>veganflow_store.db</code>)</h4>
         <p style="color:#64748b; font-size:0.95rem;">Live inventory levels, velocity, and Days of Supply computed from SQLite.</p>
     </div>
     """, unsafe_allow_html=True)
