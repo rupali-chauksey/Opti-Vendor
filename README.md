@@ -1,6 +1,8 @@
 # OptiVendor
 **Autonomous Multi-Agent Inventory Procurement & Negotiation System**
 
+*Developed by **[Rupali Chauksey](https://github.com/rupali-chauksey)***
+
 ---
 
 ## 🎬 LIVE DEMO — TRY IT NOW
@@ -400,9 +402,10 @@ python test_inventory_guardrails.py       # Unit tests
 
 ---
 
-## 👩‍💻 Author & Maintainer
+## 👩‍💻 Developer & Author
 
-Developed by **Rupali Chauksey**
+Developed & Maintained by **[Rupali Chauksey](https://github.com/rupali-chauksey)**  
+*AI & Multi-Agent Systems Engineer*
 
 ---
 
