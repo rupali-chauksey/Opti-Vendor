@@ -1014,47 +1014,30 @@ with tab_warroom:
 # TAB 2: MULTI-AGENT CHAT TERMINAL (WITH HITL APPROVAL + DEMO AUTO-RUN)
 # -------------------------------------------------------------
 with tab_chat:
-    # Welcome Assistant Card Bubble
+    # Top Agent Card Banner Header (matching user screenshot)
     st.markdown(f"""
-    <div style="display: flex; align-items: flex-start; gap: 14px; background: {'#0f172a' if is_dark_mode else '#f0f9ff'}; border: 1px solid {'#1e293b' if is_dark_mode else '#e0f2fe'}; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
-        <img src="https://img.icons8.com/color/96/bot.png" width="46" height="46" style="border-radius: 10px; background: #e0f2fe; padding: 4px; flex-shrink: 0;" />
-        <div>
-            <h4 style="margin: 0 0 4px 0; font-size: 1.02rem; font-weight: 700; color: {'#f8fafc' if is_dark_mode else '#0f172a'};">Hello! I'm the OptiVendor Store Manager Orchestrator.</h4>
-            <p style="margin: 0; font-size: 0.88rem; color: {'#94a3b8' if is_dark_mode else '#334155'};">I can help you with store inventory, out-of-stock scans, vendor negotiations, and automated procurement. Try one of the demo queries below or ask me anything.</p>
+    <div style="display: flex; justify-content: space-between; align-items: center; background: {'#0d1527' if is_dark_mode else '#ffffff'}; border: 1px solid {'#1e293b' if is_dark_mode else '#cbd5e1'}; border-radius: 12px; padding: 14px 20px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+        <div style="display: flex; align-items: center; gap: 14px;">
+            <img src="https://img.icons8.com/color/96/bot.png" width="40" style="filter: drop-shadow(0 2px 6px rgba(0,0,0,0.3)); flex-shrink: 0;" />
+            <div>
+                <div style="font-weight: 700; font-size: 1.08rem; color: {'#f8fafc' if is_dark_mode else '#0f172a'}; line-height: 1.2;">
+                    OptiVendor Store Manager Orchestrator
+                </div>
+                <div style="font-size: 0.84rem; color: {'#94a3b8' if is_dark_mode else '#64748b'}; margin-top: 3px;">
+                    Routes intents across shelf-monitor, negotiation and POS agents
+                </div>
+            </div>
+        </div>
+        <div style="{badge_style} font-size: 0.8rem; font-weight: 700; padding: 5px 14px; border-radius: 20px; display: flex; align-items: center; gap: 6px;">
+            ● online
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # 5 Interactive Quick Action Cards Grid
-    st.markdown("<p style='font-size:0.85rem; font-weight:700; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;'>⚡ Quick Action Cards</p>", unsafe_allow_html=True)
-    c1, c2, c3, c4, c5 = st.columns(5)
-    with c1:
-        if st.button("🔍 Check my store inventory\nSee all products and risk status", use_container_width=True, key="quick_1"):
-            st.session_state["demo_query"] = "Check my store inventory"
-            st.rerun()
-    with c2:
-        if st.button("⚠️ Show out of stock items\nFind critical items (≤ 2 days)", use_container_width=True, key="quick_2"):
-            st.session_state["demo_query"] = "Check my store inventory and find which items are out of stock"
-            st.rerun()
-    with c3:
-        if st.button("📅 What's expiring soon?\nItems expiring in 7 days", use_container_width=True, key="quick_3"):
-            st.session_state["demo_query"] = "Which items are expiring soon?"
-            st.rerun()
-    with c4:
-        if st.button("🛒 Order 50 Oat Barista\nSmall order (auto-execute)", use_container_width=True, key="quick_4"):
-            st.session_state["demo_query"] = "Order 50 units of Oat Barista Blend"
-            st.rerun()
-    with c5:
-        if st.button("🛒 Order 500 Oat Barista\nLarge order (with approval)", use_container_width=True, key="quick_5"):
-            st.session_state["demo_query"] = "Order 500 units of Oat Barista Blend"
-            st.rerun()
-    
-    st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
-
     # Initialize session states
     if "chat_history" not in st.session_state:
         st.session_state["chat_history"] = [
-            {"role": "assistant", "content": "Hello! I am the **OptiVendor Store Manager Orchestrator**. How can I assist with store inventory, out-of-stock scans, or automated restock negotiations today?"}
+            {"role": "assistant", "content": "Hello! I am the OptiVendor Store Manager Orchestrator. How can I assist with store inventory, out-of-stock scans, or automated restock negotiations today?"}
         ]
 
     if "pending_approval" not in st.session_state:
@@ -1071,7 +1054,7 @@ with tab_chat:
         avatar_icon = "https://img.icons8.com/color/96/bot.png" if msg["role"] == "assistant" else "👤"
         with st.chat_message(msg["role"], avatar=avatar_icon):
             if msg.get("trace_steps"):
-                with st.expander("🛠️ View Multi-Agent Execution Graph & Tool Traces (Open/Hide)", expanded=False):
+                with st.expander("✅ Multi-agent task completed", expanded=False):
                     for step in msg["trace_steps"]:
                         if "Orchestrator" in step:
                             prefix = "🧠 **[Orchestrator Node]**"
