@@ -37,21 +37,28 @@ st.set_page_config(
 # Professional Enterprise Light Grey Theme (#F5F7FA) with LangSmith/Datadog Minimalist Styling
 st.markdown("""
 <style>
-    /* Full Page Background */
+    /* High-End Logistics & Supply Chain Cyber-Grid Theme */
     .stApp {
-        background-color: #f5f7fa !important;
-        background-image: radial-gradient(#e2e8f0 1px, transparent 1px) !important;
-        background-size: 24px 24px !important;
+        background-color: #f8fafc !important;
+        background-image: 
+            radial-gradient(at 0% 0%, rgba(14, 165, 233, 0.08) 0px, transparent 50%),
+            radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.08) 0px, transparent 50%),
+            linear-gradient(to right, rgba(226, 232, 240, 0.6) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(226, 232, 240, 0.6) 1px, transparent 1px) !important;
+        background-size: 100% 100%, 100% 100%, 32px 32px, 32px 32px !important;
         color: #0f172a;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
     
-    /* Global Typography */
+    /* Hero Header Banner */
     .hero-header {
         text-align: left;
-        padding: 10px 0 22px 0;
-        border-bottom: 1px solid #e2e8f0;
+        padding: 16px 22px;
+        background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%);
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
         margin-bottom: 24px;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.03);
     }
     .hero-title {
         font-size: 2rem;
@@ -69,14 +76,20 @@ st.markdown("""
         font-weight: 400;
     }
     
-    /* White Card Container */
+    /* Glassmorphism White Card Container */
     .optimizer-card {
-        background: #ffffff;
-        border-radius: 14px;
-        padding: 22px;
-        box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
-        margin-bottom: 18px;
-        border: 1px solid #e2e8f0;
+        background: rgba(255, 255, 255, 0.92);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.05), 0 8px 10px -6px rgba(15, 23, 42, 0.02);
+        margin-bottom: 20px;
+        border: 1px solid rgba(226, 232, 240, 0.9);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .optimizer-card:hover {
+        box-shadow: 0 14px 30px -5px rgba(15, 23, 42, 0.08);
     }
     
     /* Step Header with Badges */
