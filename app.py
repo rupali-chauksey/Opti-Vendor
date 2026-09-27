@@ -34,229 +34,483 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Professional Enterprise Light Grey Theme (#F5F7FA) with LangSmith/Datadog Minimalist Styling
-st.markdown("""
-<style>
-    /* Full Page Background */
-    .stApp {
-        background-color: #f5f7fa !important;
-        background-image: radial-gradient(#e2e8f0 1px, transparent 1px) !important;
-        background-size: 24px 24px !important;
-        color: #0f172a;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    }
-    
-    /* Global Typography */
-    .hero-header {
-        text-align: left;
-        padding: 10px 0 22px 0;
-        border-bottom: 1px solid #e2e8f0;
-        margin-bottom: 24px;
-    }
-    .hero-title {
-        font-size: 2rem;
-        font-weight: 800;
-        color: #0f172a;
-        letter-spacing: -0.5px;
-        margin-bottom: 4px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-    .hero-subtitle {
-        color: #475569;
-        font-size: 1rem;
-        font-weight: 400;
-    }
-    
-    /* White Card Container */
-    .optimizer-card {
-        background: #ffffff;
-        border-radius: 14px;
-        padding: 22px;
-        box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
-        margin-bottom: 18px;
-        border: 1px solid #e2e8f0;
-    }
-    
-    /* Step Header with Badges */
-    .step-header {
-        display: flex;
-        align-items: center;
-        margin-bottom: 16px;
-    }
-    .step-badge {
-        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
-        color: #ffffff;
-        font-weight: 700;
-        font-size: 0.95rem;
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-right: 12px;
-        box-shadow: 0 2px 6px rgba(2, 132, 199, 0.25);
-    }
-    .step-title-text {
-        font-size: 1.15rem;
-        font-weight: 700;
-        color: #0f172a;
-    }
-    .step-subtitle-text {
-        font-size: 0.82rem;
-        color: #64748b;
-        font-weight: 400;
-        display: block;
-    }
-    
-    /* Sub-Metric Boxes */
-    .sub-metric-box {
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
-        border-radius: 10px;
-        padding: 14px 10px;
-        text-align: center;
-    }
-    .sub-metric-label {
-        font-size: 0.8rem;
-        color: #64748b;
-        font-weight: 500;
-        margin-bottom: 4px;
-    }
-    .sub-metric-val {
-        font-size: 1.65rem;
-        font-weight: 800;
-        color: #0f172a;
-        line-height: 1.1;
-    }
-    .sub-metric-unit {
-        font-size: 0.78rem;
-        color: #64748b;
-        margin-top: 2px;
-    }
-    .sub-metric-badge-low {
-        display: inline-block;
-        background: #fee2e2;
-        color: #dc2626;
-        font-size: 0.72rem;
-        font-weight: 700;
-        padding: 2px 8px;
-        border-radius: 6px;
-        margin-top: 4px;
-    }
-    .sub-metric-badge-crit {
-        display: inline-block;
-        background: #fef2f2;
-        color: #b91c1c;
-        font-size: 0.72rem;
-        font-weight: 700;
-        padding: 2px 8px;
-        border-radius: 6px;
-        margin-top: 4px;
-    }
-    
-    /* Preserved Red Status Alert Banner for Critical Stockout */
-    .alert-banner-low {
-        background: #fef2f2;
-        border: 1px solid #fecaca;
-        border-left: 5px solid #ef4444;
-        border-radius: 8px;
-        padding: 12px 16px;
-        color: #991b1b;
-        font-size: 0.92rem;
-        font-weight: 500;
-        margin-top: 14px;
-    }
-    
-    /* Dialog Bubbles */
-    .dialog-bubble-buyer {
-        background-color: #f0fdf4;
-        border-left: 4px solid #16a34a;
-        padding: 12px 16px;
-        border-radius: 8px;
-        margin-bottom: 10px;
-        color: #14532d;
-        font-size: 0.93rem;
-    }
-    .dialog-bubble-vendor {
-        background-color: #fff7ed;
-        border-left: 4px solid #ea580c;
-        padding: 12px 16px;
-        border-radius: 8px;
-        margin-bottom: 10px;
-        color: #7c2d12;
-        font-size: 0.93rem;
-    }
-    .dialog-bubble-success {
-        background-color: #f0fdfa;
-        border-left: 4px solid #0d9488;
-        padding: 12px 16px;
-        border-radius: 8px;
-        margin-bottom: 10px;
-        color: #134e4a;
-        font-size: 0.93rem;
-    }
-    
-    /* Minimalist Datadog / LangSmith Tabs */
-    .stTabs [data-baseweb="tab-list"] {
-        background: #e2e8f0;
-        border-radius: 10px;
-        padding: 4px;
-        gap: 6px;
-        border: 1px solid #cbd5e1;
-    }
-    .stTabs [data-baseweb="tab"] {
-        color: #475569 !important;
-        font-weight: 600;
-        border-radius: 8px;
-        padding: 8px 18px;
-        background: transparent;
-        border: none;
-        font-size: 0.92rem;
-    }
-    .stTabs [aria-selected="true"] {
-        background: #ffffff !important;
-        color: #0f172a !important;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.06);
-    }
-    
-    /* Button Customization: GREEN / DARK BLUE for Action */
-    div.stButton > button[kind="primary"] {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
-        color: #ffffff !important;
-        border: none !important;
-        border-radius: 8px !important;
-        font-weight: 600 !important;
-        padding: 10px 20px !important;
-        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25) !important;
-    }
-    div.stButton > button[kind="primary"]:hover {
-        background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
-        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35) !important;
-    }
-    
-    .qty-preview-badge {
-        background: #f1f5f9;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        text-align: center;
-        padding: 8px;
-        font-weight: 700;
-        font-size: 1.05rem;
-        color: #0f172a;
-        margin-top: 4px;
-        margin-bottom: 14px;
-    }
-</style>
-""", unsafe_allow_html=True)
+# Theme State Initialization
+if "app_theme" not in st.session_state:
+    st.session_state["app_theme"] = "Dark"
 
-# Top Header
-st.markdown("""
-<div class="hero-header">
-    <div class="hero-title">📦 OptiVendor Enterprise</div>
-    <div class="hero-subtitle">Autonomous Multi-Agent Inventory Procurement, A2A Negotiation & POS Inventory Control</div>
+# Theme Selector in Sidebar (processed first)
+with st.sidebar:
+    st.image("https://img.icons8.com/color/96/bot.png", width=56)
+    st.markdown("### 🎨 Theme Mode")
+    theme_choice = st.selectbox(
+        "Select Interface Theme:",
+        ["🌙 Control Tower (Dark)", "☀️ Enterprise (Light)"],
+        index=0 if st.session_state.get("app_theme") == "Dark" else 1,
+        key="ui_theme_selectbox"
+    )
+    if "Light" in theme_choice:
+        st.session_state["app_theme"] = "Light"
+    else:
+        st.session_state["app_theme"] = "Dark"
+    
+    st.divider()
+    st.markdown("### System Health & Stack")
+    st.success("🟢 11 A2A Vendor Microservices Live")
+    st.info("🦙 Local Ollama Models: `qwen2.5:7b` + `llama3.2`")
+    st.info("💾 Database: `veganflow_store.db` (SQLite)")
+
+is_dark_mode = st.session_state.get("app_theme") == "Dark"
+
+if is_dark_mode:
+    st.markdown("""
+    <style>
+        /* High-End Cyber Control Tower Dark Theme */
+        .stApp {
+            background-color: #080c14 !important;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.06) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(14, 165, 233, 0.06) 0px, transparent 50%),
+                linear-gradient(to right, rgba(30, 41, 59, 0.3) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(30, 41, 59, 0.3) 1px, transparent 1px) !important;
+            background-size: 100% 100%, 100% 100%, 32px 32px, 32px 32px !important;
+            color: #f8fafc !important;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+        
+        /* Sidebar Styling */
+        section[data-testid="stSidebar"] {
+            background-color: #0d1322 !important;
+            border-right: 1px solid #1e293b !important;
+        }
+        section[data-testid="stSidebar"] * {
+            color: #e2e8f0 !important;
+        }
+        
+        /* Hero Header Banner */
+        .hero-header {
+            text-align: left;
+            padding: 18px 22px;
+            background: #0f172a !important;
+            border: 1px solid #1e293b !important;
+            border-radius: 14px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        }
+        .hero-title {
+            font-size: 2rem;
+            font-weight: 800;
+            color: #f8fafc !important;
+            letter-spacing: -0.5px;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .hero-subtitle {
+            color: #94a3b8 !important;
+            font-size: 0.95rem;
+            font-weight: 400;
+        }
+        
+        /* Dark Optimizer Card Container */
+        .optimizer-card {
+            background: #0f172a !important;
+            border-radius: 14px;
+            padding: 22px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+            margin-bottom: 18px;
+            border: 1px solid #1e293b !important;
+            color: #f8fafc !important;
+        }
+        .optimizer-card h4, .optimizer-card h3, .optimizer-card p, .optimizer-card li, .optimizer-card b, .optimizer-card span {
+            color: #f8fafc !important;
+        }
+        
+        /* Step Header with Badges */
+        .step-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .step-badge {
+            background: linear-gradient(135deg, #0d9488 0%, #059669 100%) !important;
+            color: #ffffff !important;
+            font-weight: 700;
+            font-size: 0.95rem;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+        }
+        .step-title-text {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #f8fafc !important;
+        }
+        .step-subtitle-text {
+            font-size: 0.82rem;
+            color: #94a3b8 !important;
+            font-weight: 400;
+            display: block;
+        }
+        
+        /* Sub-Metric Boxes */
+        .sub-metric-box {
+            background: #1e293b !important;
+            border: 1px solid #334155 !important;
+            border-radius: 10px;
+            padding: 14px 10px;
+            text-align: center;
+        }
+        .sub-metric-label {
+            font-size: 0.8rem;
+            color: #94a3b8 !important;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+        .sub-metric-val {
+            font-size: 1.65rem;
+            font-weight: 800;
+            color: #38bdf8 !important;
+            line-height: 1.1;
+        }
+        .sub-metric-unit {
+            font-size: 0.78rem;
+            color: #94a3b8 !important;
+            margin-top: 2px;
+        }
+        .sub-metric-badge-low {
+            display: inline-block;
+            background: #451a03 !important;
+            color: #f97316 !important;
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 6px;
+            margin-top: 4px;
+        }
+        .sub-metric-badge-crit {
+            display: inline-block;
+            background: #450a0a !important;
+            color: #ef4444 !important;
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 6px;
+            margin-top: 4px;
+        }
+        
+        /* Dialog Bubbles */
+        .dialog-bubble-buyer {
+            background-color: #064e3b !important;
+            border-left: 4px solid #10b981 !important;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            color: #a7f3d0 !important;
+            font-size: 0.93rem;
+        }
+        .dialog-bubble-vendor {
+            background-color: #431407 !important;
+            border-left: 4px solid #ea580c !important;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            color: #ffedd5 !important;
+            font-size: 0.93rem;
+        }
+        .dialog-bubble-success {
+            background-color: #042f2e !important;
+            border-left: 4px solid #14b8a6 !important;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            color: #99f6e4 !important;
+            font-size: 0.93rem;
+        }
+        
+        /* Minimalist Cyber Dark Tabs */
+        .stTabs [data-baseweb="tab-list"] {
+            background: #0f172a !important;
+            border-radius: 10px;
+            padding: 4px;
+            gap: 6px;
+            border: 1px solid #1e293b !important;
+        }
+        .stTabs [data-baseweb="tab"] {
+            color: #94a3b8 !important;
+            font-weight: 600;
+            border-radius: 8px;
+            padding: 8px 18px;
+            background: transparent;
+            border: none;
+            font-size: 0.92rem;
+        }
+        .stTabs [aria-selected="true"] {
+            background: #1e293b !important;
+            color: #10b981 !important;
+            border-bottom: 2px solid #10b981 !important;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25) !important;
+        }
+        
+        /* Button Customization */
+        div.stButton > button[kind="primary"] {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+            color: #ffffff !important;
+            border: none !important;
+            border-radius: 8px !important;
+            font-weight: 600 !important;
+            padding: 10px 20px !important;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25) !important;
+        }
+        
+        .qty-preview-badge {
+            background: #1e293b !important;
+            border: 1px solid #334155 !important;
+            border-radius: 8px;
+            text-align: center;
+            padding: 8px;
+            font-weight: 700;
+            font-size: 1.05rem;
+            color: #f8fafc !important;
+            margin-top: 4px;
+            margin-bottom: 14px;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+else:
+    st.markdown("""
+    <style>
+        /* Full Page Background */
+        .stApp {
+            background-color: #f5f7fa !important;
+            background-image: radial-gradient(#e2e8f0 1px, transparent 1px) !important;
+            background-size: 24px 24px !important;
+            color: #0f172a;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+        
+        /* Global Typography */
+        .hero-header {
+            text-align: left;
+            padding: 10px 0 22px 0;
+            border-bottom: 1px solid #e2e8f0;
+            margin-bottom: 24px;
+        }
+        .hero-title {
+            font-size: 2rem;
+            font-weight: 800;
+            color: #0f172a;
+            letter-spacing: -0.5px;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .hero-subtitle {
+            color: #475569;
+            font-size: 1rem;
+            font-weight: 400;
+        }
+        
+        /* White Card Container */
+        .optimizer-card {
+            background: #ffffff;
+            border-radius: 14px;
+            padding: 22px;
+            box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
+            margin-bottom: 18px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        /* Step Header with Badges */
+        .step-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .step-badge {
+            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 0.95rem;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            box-shadow: 0 2px 6px rgba(2, 132, 199, 0.25);
+        }
+        .step-title-text {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #0f172a;
+        }
+        .step-subtitle-text {
+            font-size: 0.82rem;
+            color: #64748b;
+            font-weight: 400;
+            display: block;
+        }
+        
+        /* Sub-Metric Boxes */
+        .sub-metric-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 14px 10px;
+            text-align: center;
+        }
+        .sub-metric-label {
+            font-size: 0.8rem;
+            color: #64748b;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+        .sub-metric-val {
+            font-size: 1.65rem;
+            font-weight: 800;
+            color: #0f172a;
+            line-height: 1.1;
+        }
+        .sub-metric-unit {
+            font-size: 0.78rem;
+            color: #64748b;
+            margin-top: 2px;
+        }
+        .sub-metric-badge-low {
+            display: inline-block;
+            background: #fee2e2;
+            color: #dc2626;
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 6px;
+            margin-top: 4px;
+        }
+        .sub-metric-badge-crit {
+            display: inline-block;
+            background: #fef2f2;
+            color: #b91c1c;
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 6px;
+            margin-top: 4px;
+        }
+        
+        /* Preserved Red Status Alert Banner for Critical Stockout */
+        .alert-banner-low {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-left: 5px solid #ef4444;
+            border-radius: 8px;
+            padding: 12px 16px;
+            color: #991b1b;
+            font-size: 0.92rem;
+            font-weight: 500;
+            margin-top: 14px;
+        }
+        
+        /* Dialog Bubbles */
+        .dialog-bubble-buyer {
+            background-color: #f0fdf4;
+            border-left: 4px solid #16a34a;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            color: #14532d;
+            font-size: 0.93rem;
+        }
+        .dialog-bubble-vendor {
+            background-color: #fff7ed;
+            border-left: 4px solid #ea580c;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            color: #7c2d12;
+            font-size: 0.93rem;
+        }
+        .dialog-bubble-success {
+            background-color: #f0fdfa;
+            border-left: 4px solid #0d9488;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            color: #134e4a;
+            font-size: 0.93rem;
+        }
+        
+        /* Minimalist Datadog / LangSmith Tabs */
+        .stTabs [data-baseweb="tab-list"] {
+            background: #e2e8f0;
+            border-radius: 10px;
+            padding: 4px;
+            gap: 6px;
+            border: 1px solid #cbd5e1;
+        }
+        .stTabs [data-baseweb="tab"] {
+            color: #475569 !important;
+            font-weight: 600;
+            border-radius: 8px;
+            padding: 8px 18px;
+            background: transparent;
+            border: none;
+            font-size: 0.92rem;
+        }
+        .stTabs [aria-selected="true"] {
+            background: #ffffff !important;
+            color: #0f172a !important;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+        }
+        
+        /* Button Customization: GREEN / DARK BLUE for Action */
+        div.stButton > button[kind="primary"] {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+            color: #ffffff !important;
+            border: none !important;
+            border-radius: 8px !important;
+            font-weight: 600 !important;
+            padding: 10px 20px !important;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25) !important;
+        }
+        div.stButton > button[kind="primary"]:hover {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35) !important;
+        }
+        
+        .qty-preview-badge {
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            text-align: center;
+            padding: 8px;
+            font-weight: 700;
+            font-size: 1.05rem;
+            color: #0f172a;
+            margin-top: 4px;
+            margin-bottom: 14px;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+# Top Header with Status Pill
+badge_style = "background: #064e3b; border: 1px solid #10b981; color: #34d399;" if is_dark_mode else "background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d;"
+st.markdown(f"""
+<div class="hero-header" style="display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <div class="hero-title">📦 OptiVendor Enterprise</div>
+        <div class="hero-subtitle">Autonomous Multi-Agent Inventory Procurement, A2A Negotiation & POS Inventory Control</div>
+    </div>
+    <div style="{badge_style} font-size: 0.82rem; font-weight: 700; padding: 6px 14px; border-radius: 20px; display: flex; align-items: center; gap: 6px;">
+        ● Orchestrator online
+    </div>
 </div>
 """, unsafe_allow_html=True)
 
