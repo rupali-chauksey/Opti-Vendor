@@ -1,6 +1,18 @@
 # OptiVendor
 **Autonomous Multi-Agent Inventory Procurement & Negotiation System**
 
+An **enterprise-grade multi-agent system** that autonomously manages retail supply chain procurement — from stockout detection to vendor negotiation to safe order execution with human approval.
+
+### Engineering Highlights
+
+- 🤖 **Multi-Agent Orchestration** via LangGraph state machine (5 specialized agents)
+- 🛡️ **Deterministic Guardrails** — Budget, Overstocking, Loop guards enforced in Python code (not LLM prompts)
+- 👤 **Human-in-the-Loop Approval** — Manager approves orders > $500 before execution
+- 💬 **Agent-to-Agent (A2A) Negotiation** — Autonomous multi-round vendor price negotiation
+- 📋 **Full Audit Trail** — Every decision logged to `approval_log.txt` for compliance
+- 🔒 **Layered Defense** — Multiple independent safety checks prevent failures
+
+**Tech:** `Python` · `LangGraph` · `Ollama (qwen2.5:7b)` · `SQLite` · `Streamlit` · `Pandas`
 ---
 
 ## 🎬 LIVE DEMO — TRY IT NOW
