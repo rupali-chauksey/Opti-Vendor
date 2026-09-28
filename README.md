@@ -1,8 +1,17 @@
 # OptiVendor
 **Autonomous Multi-Agent Inventory Procurement & Negotiation System**
 
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![LangGraph](https://img.shields.io/badge/orchestration-LangGraph-green.svg)](https://github.com/langchain-ai/langgraph)
+[![Ollama](https://img.shields.io/badge/LLM-Ollama_qwen2.5:7b-black.svg)](https://ollama.ai/)
+[![SQLite](https://img.shields.io/badge/database-SQLite-003B57.svg)](https://www.sqlite.org/)
+[![Streamlit](https://img.shields.io/badge/UI-Streamlit-FF4B4B.svg)](https://streamlit.io/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Live Demo](https://img.shields.io/badge/Live-Demo-brightgreen.svg)](https://opti-vendor-unkmmdjpp3udeqrsdpxqds.streamlit.app/)
+
 An **enterprise-grade multi-agent system** that autonomously manages retail supply chain procurement — from stockout detection to vendor negotiation to safe order execution with human approval.
 
+### Engineering Highlights
 
 - 🤖 **Multi-Agent Orchestration** via LangGraph state machine (5 specialized agents)
 - 🛡️ **Deterministic Guardrails** — Budget, Overstocking, Loop guards enforced in Python code (not LLM prompts)
@@ -12,6 +21,8 @@ An **enterprise-grade multi-agent system** that autonomously manages retail supp
 - 🔒 **Layered Defense** — Multiple independent safety checks prevent failures
 
 **Tech:** `Python` · `LangGraph` · `Ollama (qwen2.5:7b)` · `SQLite` · `Streamlit` · `Pandas`
+
+🔗 **[Live Demo →](https://opti-vendor-unkmmdjpp3udeqrsdpxqds.streamlit.app/)**
 ---
 
 ## 🎬 LIVE DEMO — TRY IT NOW
