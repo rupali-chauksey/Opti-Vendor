@@ -3,7 +3,6 @@
 
 An **enterprise-grade multi-agent system** that autonomously manages retail supply chain procurement — from stockout detection to vendor negotiation to safe order execution with human approval.
 
-### Engineering Highlights
 
 - 🤖 **Multi-Agent Orchestration** via LangGraph state machine (5 specialized agents)
 - 🛡️ **Deterministic Guardrails** — Budget, Overstocking, Loop guards enforced in Python code (not LLM prompts)
