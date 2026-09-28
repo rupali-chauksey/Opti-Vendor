@@ -1,13 +1,11 @@
 # OptiVendor
 **Autonomous Multi-Agent Inventory Procurement & Negotiation System**
 
-*Developed by **[Rupali Chauksey](https://github.com/rupali-chauksey)***
-
 ---
 
 ## 🎬 LIVE DEMO — TRY IT NOW
 
-**👉 [Live Application](https://opti-vendor.streamlit.app/)**
+**👉 [Live Application](https://opti-vendor-h9hsmnvx5xfkzxujmrvsky.streamlit.app/)**
 
 **Try these 3 scenarios in 2 minutes:**
 
@@ -47,7 +45,7 @@
 
 A **production-grade multi-agent system** that combines:
 
-✅ **Autonomous Agent-to-Agent Negotiation** — LLM runs multi-round vendor negotiations  
+✅ **Autonomous Agent-to-Agent Negotiation** — Claude LLM runs multi-round vendor negotiations  
 ✅ **Deterministic Guardrails** — Budget, overstocking, and loop limits enforced in Python code (not prompts)  
 ✅ **Human-in-the-Loop Approval** — Managers approve large orders (> $500) before execution  
 ✅ **Layered Defense** — Multiple independent safety checks prevent failures  
@@ -161,34 +159,75 @@ A **production-grade multi-agent system** that combines:
 
 ---
 
-## 🏗️ How It Works (Architecture)
 
-```text
-User Query
-    ↓
-[ORCHESTRATOR NODE]
-├─ What are you asking? (intent)
-├─ Which product? (entity extraction)
-└─ How many? (quantity parsing)
-    ↓
-    ├─────────────────┬──────────────────┐
-    ↓                 ↓                  ↓
-[SHELF MONITOR]  [NEGOTIATION NODE]  [if needed]
-├─ Current stock   ├─ Find vendors
-├─ Days of Supply  ├─ Multi-round talks
-└─ Risk check      └─ Max 3 rounds
-    ↓                 ↓
-    └────────────┬────┘
-                 ↓
-         [EXECUTION NODE]
-         ├─ Budget Guard? (> $500)
-         ├─ Human Approval? (if yes)
-         ├─ Overstocking Guard? (reduce qty)
-         └─ Execute → Database
-                 ↓
-         [OUTPUT FORMATTER]
-         └─ Natural language response
+## 🏗️ System Architecture
+
+```mermaid
+flowchart TD
+    User([👤 Store Manager<br/>User Query]) --> Orchestrator
+    
+    subgraph Core["🔷 OptiVendor Core (LangGraph State Machine)"]
+        Orchestrator[🎯 Orchestrator Node<br/>Intent Classification<br/>Entity Extraction<br/>Quantity Parsing]
+        
+        Orchestrator -->|CHECK_STOCK| ShelfMonitor
+        Orchestrator -->|NEGOTIATE_RESTOCK| Negotiation
+        
+        ShelfMonitor[📊 Shelf Monitor Node<br/>Query Inventory<br/>Days of Supply<br/>Risk Detection]
+        
+        Negotiation[💬 Negotiation Node<br/>Fetch Vendors<br/>A2A RFQ Handshake<br/>Max 3 Rounds]
+        
+        Negotiation --> Execution
+        
+        Execution[✅ Execution Node<br/>Budget Guard<br/>Overstocking Guard<br/>HITL Approval]
+        
+        ShelfMonitor --> Formatter
+        Execution --> Formatter
+        
+        Formatter[📝 Output Formatter Node<br/>Natural Language<br/>Never Raw JSON]
+    end
+    
+    Orchestrator -.Reads.-> DB
+    ShelfMonitor -.Reads.-> DB
+    Negotiation -.Reads.-> DB
+    Execution -->|Writes| DB
+    Execution -->|Approve/Reject| HITL
+    
+    DB[(💾 SQLite Database<br/>veganflow_store.db<br/>Products, Vendors, Orders)]
+    
+    HITL{{👤 Human-in-the-Loop<br/>Approve / Reject<br/>Budget > $500}}
+    
+    Negotiation -.A2A Protocol.-> VendorEcosystem
+    
+    subgraph VendorEcosystem["🌐 External Vendor Ecosystem"]
+        Vendors[🏪 11 Vendor Microservices<br/>Clark Distributing<br/>Earthly Gourmet<br/>+ 9 more]
+    end
+    
+    Formatter --> Response([📤 Natural Language<br/>Response to Manager])
+    
+    %% Styling
+    classDef orchestratorStyle fill:#4CAF50,stroke:#2E7D32,color:#fff
+    classDef monitorStyle fill:#2196F3,stroke:#1565C0,color:#fff
+    classDef negotiationStyle fill:#FF9800,stroke:#E65100,color:#fff
+    classDef executionStyle fill:#9C27B0,stroke:#6A1B9A,color:#fff
+    classDef formatterStyle fill:#607D8B,stroke:#37474F,color:#fff
+    classDef dbStyle fill:#FFC107,stroke:#F57C00,color:#000
+    classDef hitlStyle fill:#F44336,stroke:#C62828,color:#fff
+    classDef vendorStyle fill:#795548,stroke:#4E342E,color:#fff
+    classDef userStyle fill:#E1F5FE,stroke:#0288D1,color:#000
+    
+    class Orchestrator orchestratorStyle
+    class ShelfMonitor monitorStyle
+    class Negotiation negotiationStyle
+    class Execution executionStyle
+    class Formatter formatterStyle
+    class DB dbStyle
+    class HITL hitlStyle
+    class Vendors vendorStyle
+    class User,Response userStyle
+
+
 ```
+
 
 ---
 
@@ -197,14 +236,14 @@ User Query
 All three are **Python code, not LLM prompts.** This means they ALWAYS work, no exceptions.
 
 ### Guard 1: Loop Guard
-```text
+```
 Rule: Maximum 3 negotiation rounds per query
 Location: agents.py → negotiation_node()
 Why: Prevents infinite loops, controls token cost
 ```
 
 ### Guard 2: Budget Guard
-```text
+```
 Rule: Orders > $500 require human approval
 Location: agents.py → execution_node()
 Why: Prevents large autonomous financial decisions
@@ -213,7 +252,7 @@ Key Detail: Checks ORIGINAL value, not reduced value
 ```
 
 ### Guard 3: Overstocking Guard
-```text
+```
 Rule: Order quantity capped at (Target - Current)
 Location: tools.py → execute_order()
 Why: Prevents over-ordering, capital blockage, waste
@@ -221,7 +260,7 @@ Why: Prevents over-ordering, capital blockage, waste
 
 ### How They Work Together
 
-```text
+```
 SCENARIO: Order 500 units @ $3.15 = $1,575
 
 Step 1 — Budget Guard fires
@@ -288,7 +327,7 @@ Real-time SQLite view with:
 ## 💡 Key Design Decisions (Why This Works)
 
 ### Decision 1: Guardrails in Code, Not Prompts
-```text
+```
 Wrong approach:
   "Please never spend more than $500"
   ↓ (LLM can ignore this)
@@ -300,7 +339,7 @@ Right approach:
 ```
 
 ### Decision 2: Check Original Value, Not Reduced Value
-```text
+```
 Request: 500 units @ $3.15 = $1,575
 
 Wrong way:
@@ -322,19 +361,19 @@ Multiple independent guards catch different failure modes:
 
 ### Decision 4: Audit Everything
 Every approval, rejection, and execution logged to `approval_log.txt`:
-```text
+```
 2026-09-26 20:45:12 | APPROVED | Oat Barista | 500 → 88 units | $277.20
 2026-09-26 20:50:30 | REJECTED | Truffle Brie | 200 units | $1,656
 ```
 
 ---
 
-## 📦 Installation (5 Minutes)
+## 📦 Installation 
 
 ```bash
 # 1. Clone
-git clone https://github.com/rupali-chauksey/Opti-Vendor.git
-cd Opti-Vendor
+git clone https://github.com/rupali-chauksey/SupplyChain.git
+cd SupplyChain
 
 # 2. Virtual environment
 python -m venv venv
@@ -374,7 +413,7 @@ streamlit run app.py
 
 ## 📁 Project Structure
 
-```text
+```
 optivendor/
 ├── app.py                      # Streamlit UI
 ├── agents.py                   # LangGraph state machine
@@ -384,7 +423,7 @@ optivendor/
 ├── README.md                   # You are here
 ├── agent_trace.log             # Auto-generated logs
 ├── approval_log.txt            # Approval audit trail
-├── optivendor_store.db          # SQLite database
+├── veganflow_store.db          # SQLite database
 └── screenshots/                # 9 test screenshots
 ```
 
@@ -402,13 +441,39 @@ python test_inventory_guardrails.py       # Unit tests
 
 ---
 
-## 👩‍💻 Developer & Author
-
-Developed & Maintained by **[Rupali Chauksey](https://github.com/rupali-chauksey)**  
-*AI & Multi-Agent Systems Engineer*
-
----
-
 ## 📝 License
 
 MIT License — See LICENSE file
+
+---
+
+
+**Repository:** [github.com/rupali-chauksey/OptiVendor](https://github.com/rupali-chauksey/OptiVendor)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
