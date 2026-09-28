@@ -22,7 +22,7 @@ An **enterprise-grade multi-agent system** that autonomously manages retail supp
 
 **Tech:** `Python` · `LangGraph` · `Ollama (qwen2.5:7b)` · `SQLite` · `Streamlit` · `Pandas`
 
-🔗 **[Live Demo →](https://opti-vendor-h9hsmnvx5xfkzxujmrvsky.streamlit.app))**
+🔗 [Live Demo →](https://opti-vendor-h9hsmnvx5xfkzxujmrvsky.streamlit.app)
 ---
 
 **Try these 3 scenarios in 2 minutes:**
