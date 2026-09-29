@@ -633,7 +633,8 @@ with tab_chat:
                 <li><b>Vendor:</b> {deal['vendor_name']}</li>
                 <li><b>Requested Quantity:</b> {deal['quantity']} units</li>
                 <li><b>Negotiated Unit Price:</b> ${deal['unit_price']:.2f}</li>
-                <li><b>Original Order Value:</b> <b style="color:#dc2626;">${original_value:.2f}</b></li>
+                <li><b>Negotiated Total:</b> <b style="color:#2563eb;">${original_value:.2f}</b></li>
+                <li><b>List Price Total:</b> <span style="text-decoration: line-through; color:#64748b;">${deal.get('list_total', original_value):.2f}</span> <span style="color:#16a34a; font-weight:600;">(Saved ${deal.get('cost_saved', 0.0):.2f})</span></li>
                 <li><b>Delivery Lead Time:</b> {deal.get('delivery_days', 2)} days</li>
             </ul>
             <p style="color:#64748b; font-size:0.85rem; margin-top:10px; margin-bottom:0;">
