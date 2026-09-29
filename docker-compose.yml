@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  optivendor-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: optivendor:latest
+    container_name: optivendor_container
+    ports:
+      - "8501:8501"
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
