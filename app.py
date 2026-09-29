@@ -13,15 +13,21 @@ if hasattr(sys.stdout, 'reconfigure'):
         pass
 
 import importlib
+import engine
+importlib.reload(engine)
+from engine import esc, compute_health_status, compute_reorder_qty, check_approval_required, get_product_policy
+
+import database
+importlib.reload(database)
+from database import init_database
+
 import tools
 importlib.reload(tools)
 from tools import query_inventory, fetch_vendors, send_a2a_rfq, execute_order, receive_purchase_order
 
-import engine
-importlib.reload(engine)
-from engine import esc, compute_health_status, compute_reorder_qty, check_approval_required, get_product_policy
+import agents
+importlib.reload(agents)
 from agents import optivendor_pipeline
-from database import init_database
 
 # Auto-initialize SQLite database if tables are missing
 try:
