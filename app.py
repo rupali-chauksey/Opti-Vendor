@@ -12,10 +12,16 @@ if hasattr(sys.stdout, 'reconfigure'):
     except Exception:
         pass
 
-from database import init_database
+import importlib
+import tools
+importlib.reload(tools)
 from tools import query_inventory, fetch_vendors, send_a2a_rfq, execute_order, receive_purchase_order
-from agents import optivendor_pipeline
+
+import engine
+importlib.reload(engine)
 from engine import esc, compute_health_status, compute_reorder_qty, check_approval_required, get_product_policy
+from agents import optivendor_pipeline
+from database import init_database
 
 # Auto-initialize SQLite database if tables are missing
 try:
