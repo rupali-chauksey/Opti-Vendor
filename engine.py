@@ -18,15 +18,18 @@ def esc(s: Any) -> str:
 # ============================================================================
 # 2. DETERMINISTIC HEALTH STATUS ENGINE
 # ============================================================================
-def compute_health_status(stock: float, target: float, velocity: float, lead_time: float = 2.0, safety_days: float = 2.0) -> str:
+def compute_health_status(stock: float, target: float, velocity: float = 0.0, lead_time: float = 2.0, safety_days: float = 2.0) -> str:
     """
     Computes deterministic inventory health status:
     - CRITICAL_STOCKOUT: stock <= 0 OR days_of_supply < lead_time
     - LOW_STOCK: days_of_supply < (lead_time + safety_days) OR stock <= 0.5 * target
+    - OVERSTOCKED: stock > target
     - OPTIMAL: stock level is healthy and well-supplied
     """
     if stock <= 0:
         return "CRITICAL_STOCKOUT"
+    if stock > target:
+        return "OVERSTOCKED"
     
     dos = (stock / velocity) if velocity > 0 else float("inf")
     
@@ -41,7 +44,7 @@ def compute_health_status(stock: float, target: float, velocity: float, lead_tim
 # ============================================================================
 # 3. DETERMINISTIC REORDER QUANTITY ENGINE
 # ============================================================================
-def compute_reorder_qty(stock: float, target: float, velocity: float, lead_time: float = 2.0, moq: int = 1) -> int:
+def compute_reorder_qty(stock: float, target: float, velocity: float = 0.0, lead_time: float = 2.0, moq: int = 1) -> int:
     """
     Computes exact reorder quantity required to reach target inventory level
     accounting for lead time sales velocity and minimum order quantity (MOQ).

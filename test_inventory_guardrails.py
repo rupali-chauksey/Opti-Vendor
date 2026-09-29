@@ -134,7 +134,7 @@ def test_langgraph_pipeline_guardrails():
     print(f"   Response: {res_product.get('final_response')}")
     assert "Vegan Jumbo Shrimp" in res_product.get("final_response")
     assert "5 units" in res_product.get("final_response")
-    assert ("OPTIMAL" in res_product.get("final_response") or "LOW" in res_product.get("final_response"))
+    assert "LOW_STOCK" in res_product.get("final_response") or "OPTIMAL" in res_product.get("final_response")
     print("   ✅ PASS: Specific product entity extracted and verified.\n")
 
 if __name__ == "__main__":

@@ -76,7 +76,7 @@ def run_evals():
             "validate": lambda res: (
                 "vegan jumbo shrimp" in res["final_response"].lower() and 
                 "5 units" in res["final_response"].lower() and
-                ("optimal" in res["final_response"].lower() or "low" in res["final_response"].lower())
+                ("low_stock" in res["final_response"].lower() or "optimal" in res["final_response"].lower())
             )
         }
     ]
