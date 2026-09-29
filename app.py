@@ -15,7 +15,10 @@ if hasattr(sys.stdout, 'reconfigure'):
 import importlib
 import engine
 importlib.reload(engine)
-from engine import esc, compute_health_status, compute_reorder_qty, check_approval_required, get_product_policy
+from engine import (
+    esc, compute_health_status, compute_reorder_qty, check_approval_required,
+    get_product_policy, get_inbound_qty, get_inventory_position, plan_order
+)
 
 import database
 importlib.reload(database)
@@ -309,17 +312,45 @@ with st.sidebar:
 # Helper: Get Live Inventory DF
 def get_inventory_table():
     conn = sqlite3.connect("optivendor_store.db")
-    df = pd.read_sql_query("SELECT product_id, name, category, stock_quantity, sales_velocity_daily, target_stock_level, vendor_id FROM inventory", conn)
+    df = pd.read_sql_query("SELECT product_id, name, category, stock_quantity, sales_velocity_daily, target_stock_level, vendor_id, expiration_date FROM inventory", conn)
     conn.close()
     df["sales_velocity_daily"] = df["sales_velocity_daily"].round(1)
     df["Days of Supply"] = (df["stock_quantity"] / df["sales_velocity_daily"]).round(1)
+    
+    # Inbound Orders & Inventory Position
+    df["Inbound (On Order)"] = df["product_id"].apply(lambda pid: get_inbound_qty(pid))
+    df["Inventory Position"] = df["stock_quantity"] + df["Inbound (On Order)"]
+
+    today = datetime.date.today()
+    def get_days_exp(exp_str):
+        try:
+            return (datetime.date.fromisoformat(exp_str) - today).days
+        except Exception:
+            return None
+    df["days_to_exp"] = df["expiration_date"].apply(get_days_exp)
+
     df["Health Status"] = df.apply(
-        lambda r: compute_health_status(r["stock_quantity"], r["target_stock_level"], r["sales_velocity_daily"]),
+        lambda r: compute_health_status(
+            stock=r["stock_quantity"],
+            target=r["target_stock_level"],
+            velocity=r["sales_velocity_daily"],
+            lead_time=2.0,
+            days_until_expiry=r["days_to_exp"],
+            inbound_qty=r["Inbound (On Order)"]
+        ),
         axis=1
     )
-    df["Health Status"] = df["Health Status"].apply(
-        lambda s: "🚨 CRITICAL STOCKOUT" if s == "CRITICAL_STOCKOUT" else ("⚠️ LOW STOCK" if s == "LOW_STOCK" else "✅ OPTIMAL")
+    df["Health Status"] = df.apply(
+        lambda r: (
+            f"⏳ EXPIRY RISK ({r['days_to_exp']}d left)" if r["Health Status"] == "EXPIRY_RISK"
+            else (f"🚚 REPLENISHMENT ({r['Inbound (On Order)']} Inbound)" if r["Health Status"] == "REPLENISHMENT_IN_TRANSIT"
+            else ("🚨 CRITICAL STOCKOUT" if r["Health Status"] == "CRITICAL_STOCKOUT"
+            else ("⚠️ LOW STOCK" if r["Health Status"] == "LOW_STOCK"
+            else "✅ OPTIMAL")))
+        ),
+        axis=1
     )
+    df = df.drop(columns=["days_to_exp"])
     return df
 
 # 3 Minimalist Tabs
@@ -360,7 +391,7 @@ with tab_warroom:
             # Fetch details for selected product
             conn = sqlite3.connect("optivendor_store.db")
             cur = conn.cursor()
-            cur.execute("SELECT product_id, stock_quantity, sales_velocity_daily, target_stock_level FROM inventory WHERE name LIKE ?", (f"%{target_prod}%",))
+            cur.execute("SELECT product_id, stock_quantity, sales_velocity_daily, target_stock_level, expiration_date FROM inventory WHERE name LIKE ?", (f"%{target_prod}%",))
             row_sel = cur.fetchone()
             conn.close()
             
@@ -368,30 +399,58 @@ with tab_warroom:
             c_stock = row_sel[1] if row_sel else 12
             vel_sel = row_sel[2] if row_sel else 15.0
             t_lvl = row_sel[3] if row_sel else 100
+            exp_sel = row_sel[4] if row_sel else None
+
+            pos_info = get_inventory_position(pid_sel)
+            inbound_sel = pos_info["inbound"]
+            inv_pos_sel = pos_info["position"]
+            headroom_sel = max(0, t_lvl - inv_pos_sel)
+            
+            today = datetime.date.today()
+            days_exp_sel = None
+            if exp_sel:
+                try:
+                    days_exp_sel = (datetime.date.fromisoformat(exp_sel) - today).days
+                except Exception:
+                    pass
             
             # Compute Lead-Time-Aware Recommended Reorder Qty
-            engine_rec_qty = compute_reorder_qty(c_stock, t_lvl, vel_sel, lead_time=2.0)
+            engine_rec_qty = compute_reorder_qty(c_stock, t_lvl, vel_sel, lead_time=2.0, inbound_qty=inbound_sel)
+            suggested_reorder = max(0, min(headroom_sel, engine_rec_qty))
             
-            order_qty = st.slider("Order Quantity", min_value=10, max_value=500, value=max(10, engine_rec_qty), step=5)
-            st.caption(f"💡 Engine Recommended Reorder: **{engine_rec_qty} units** (Target: {t_lvl} − Stock: {c_stock} + Lead Sales: {int(vel_sel*2)})")
+            slider_max = max(100, t_lvl * 2)
+            default_val = max(5, suggested_reorder) if suggested_reorder > 0 else 10
+            order_qty = st.slider("Order Quantity", min_value=5, max_value=slider_max, value=default_val, step=5)
+            
+            if inbound_sel > 0:
+                st.info(f"🚚 **{inbound_sel} units already in transit** (Position: {inv_pos_sel}/{t_lvl} units).")
+            st.caption(f"💡 Recommended: **{suggested_reorder} units** (Target: {t_lvl} − Position: {inv_pos_sel} + Lead Demand: {int(vel_sel*2)})")
             btn_run_sim = st.button("🚀 Run Agent Workflow", type="primary", use_container_width=True)
 
     with col_right:
         days_left = round(c_stock / vel_sel, 1) if vel_sel > 0 else 999.0
-        health_code = compute_health_status(c_stock, t_lvl, vel_sel)
+        health_code = compute_health_status(c_stock, t_lvl, vel_sel, lead_time=2.0, days_until_expiry=days_exp_sel, inbound_qty=inbound_sel)
         
-        if health_code == "CRITICAL_STOCKOUT":
+        if health_code == "EXPIRY_RISK":
+            status_badge = f"⏳ EXPIRY RISK ({days_exp_sel}d)"
+            alert_class = "sub-metric-badge-low"
+            banner_html = f'<div class="alert-banner-low" style="background:#fff1f2; border-color:#fecdd3; border-left-color:#e11d48; color:#9f1239;">⏳ <b>Shelf Monitor Alert:</b> Batch expires in <b>{days_exp_sel} days</b>. Estimated spoilage risk: prioritize depletion before restock.</div>'
+        elif health_code == "REPLENISHMENT_IN_TRANSIT":
+            status_badge = f"🚚 REPLENISHMENT ({inbound_sel} Inbound)"
+            alert_class = "sub-metric-badge-low"
+            banner_html = f'<div class="alert-banner-low" style="background:#eff6ff; border-color:#bfdbfe; border-left-color:#2563eb; color:#1e40af;">🚚 <b>Shelf Monitor Notice:</b> Stock is currently low ({days_left}d supply), but <b>{inbound_sel} units</b> are IN_TRANSIT. Target will be covered upon arrival.</div>'
+        elif health_code == "CRITICAL_STOCKOUT":
             status_badge = "🚨 CRITICAL STOCKOUT"
             alert_class = "sub-metric-badge-crit"
-            banner_html = esc(f'<div class="alert-banner-low">🚨 <b>Shelf Monitor Alert:</b> Critical Stockout risk detected for <code>{target_prod}</code> ({days_left} days supply remaining). Reorder required.</div>')
+            banner_html = f'<div class="alert-banner-low">🚨 <b>Shelf Monitor Alert:</b> Critical Stockout risk detected for <code>{target_prod}</code> ({days_left} days supply remaining). Reorder required.</div>'
         elif health_code == "LOW_STOCK":
             status_badge = "⚠️ LOW STOCK"
             alert_class = "sub-metric-badge-low"
-            banner_html = esc(f'<div class="alert-banner-low" style="background:#fff7ed; border-color:#fed7aa; border-left-color:#f97316; color:#9a3412;">⚠️ <b>Shelf Monitor Alert:</b> Stock below safety threshold for <code>{target_prod}</code> ({days_left} days supply remaining). Reorder recommended: <b>{engine_rec_qty} units</b>.</div>')
+            banner_html = f'<div class="alert-banner-low" style="background:#fff7ed; border-color:#fed7aa; border-left-color:#f97316; color:#9a3412;">⚠️ <b>Shelf Monitor Alert:</b> Stock below safety threshold for <code>{target_prod}</code> ({days_left} days supply remaining). Reorder recommended: <b>{suggested_reorder} units</b>.</div>'
         else:
             status_badge = "✅ OPTIMAL"
             alert_class = ""
-            banner_html = esc(f'<div class="alert-banner-low" style="background:#f0fdf4; border-color:#bbf7d0; border-left-color:#16a34a; color:#14532d;">✅ <b>Shelf Monitor Scan:</b> Stock level is healthy for <code>{target_prod}</code> ({c_stock}/{t_lvl} units). Reorder recommended: <b>{engine_rec_qty} units</b> (to cover 2-day lead time sales).</div>')
+            banner_html = f'<div class="alert-banner-low" style="background:#f0fdf4; border-color:#bbf7d0; border-left-color:#16a34a; color:#14532d;">✅ <b>Shelf Monitor Scan:</b> Stock level is healthy for <code>{target_prod}</code> ({c_stock}/{t_lvl} units).</div>'
 
         # Fetch last stock movement for subtitle
         conn = sqlite3.connect("optivendor_store.db")
@@ -416,22 +475,22 @@ with tab_warroom:
                 <div class="sub-metric-box">
                     <div class="sub-metric-label">Current Stock</div>
                     <div class="sub-metric-val">{c_stock}</div>
-                    <div class="sub-metric-unit">units</div>
+                    <div class="sub-metric-unit">units on-hand</div>
                 </div>
                 <div class="sub-metric-box">
-                    <div class="sub-metric-label">Sales Velocity</div>
-                    <div class="sub-metric-val">{vel_sel:.1f}</div>
-                    <div class="sub-metric-unit">units/day</div>
+                    <div class="sub-metric-label">Inbound Orders</div>
+                    <div class="sub-metric-val" style="color: #2563eb;">+{inbound_sel}</div>
+                    <div class="sub-metric-unit">units on order</div>
                 </div>
                 <div class="sub-metric-box">
                     <div class="sub-metric-label">Days of Supply</div>
-                    <div class="sub-metric-val" style="color: {'#dc2626' if health_code == 'CRITICAL_STOCKOUT' else ('#d97706' if health_code == 'LOW_STOCK' else '#16a34a')};">{days_left}</div>
+                    <div class="sub-metric-val" style="color: {'#dc2626' if health_code == 'CRITICAL_STOCKOUT' else ('#d97706' if 'LOW' in health_code or 'EXPIRY' in health_code else '#16a34a')};">{days_left}</div>
                     <div class="{alert_class}">{status_badge}</div>
                 </div>
                 <div class="sub-metric-box">
                     <div class="sub-metric-label">Target Capacity</div>
                     <div class="sub-metric-val">{t_lvl}</div>
-                    <div class="sub-metric-unit">units</div>
+                    <div class="sub-metric-unit">units max</div>
                 </div>
             </div>
             {banner_html}
@@ -439,9 +498,12 @@ with tab_warroom:
         """, unsafe_allow_html=True)
         
         if btn_run_sim:
+            # Execute centralized plan_order
+            plan = plan_order(product_id=pid_sel, requested_quantity=order_qty)
             pol = get_product_policy(pid_sel)
+
             # Step 2: Strategic Policy
-            st.markdown(esc(f"""
+            st.markdown(f"""
             <div class="optimizer-card">
                 <div class="step-header">
                     <div class="step-badge" style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);">2</div>
@@ -452,12 +514,12 @@ with tab_warroom:
                 </div>
                 <div class="dialog-bubble-buyer">
                     <b>🧠 Long-Term Strategy Memory Ingested for {pol['name']}:</b><br>
-                    • Target Wholesale Price: <b>$3.30 / unit</b><br>
-                    • Hard Policy Ceiling Price: <b>${pol.get('max_unit_price', 4.50):.2f} / unit</b> (Reject offers above ceiling)<br>
+                    • Target Wholesale Price: <b>${pol.get('target_price', 3.30):.2f} / unit</b><br>
+                    • Hard Policy Ceiling Price: <b>${pol.get('max_unit_price', 3.80):.2f} / unit</b> (Offers above ceiling will be disqualified)<br>
                     • Bulk Discount Tiers: ≥50 units (5% off), ≥100 units (10% off).
                 </div>
             </div>
-            """), unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
             
             # Step 3: Vendor Marketplace Discovery
             vendors_list = fetch_vendors(product_id=pid_sel)
@@ -482,79 +544,110 @@ with tab_warroom:
                 })
                 st.dataframe(df_render, use_container_width=True, hide_index=True)
             
-            # Step 4: Multi-Round A2A Negotiation Handshake
-            top_v = vendors_list[0] if vendors_list else {"name": "Clark Distributing", "endpoint_url": "http://localhost:8002/a2a"}
-            rfq_res = send_a2a_rfq(top_v["endpoint_url"], pid_sel, order_qty, target_unit_price=3.30)
-            
-            st.markdown(esc(f"""
-            <div class="optimizer-card">
-                <div class="step-header">
-                    <div class="step-badge" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">4</div>
-                    <div>
-                        <span class="step-title-text">Autonomous Multi-Round A2A Negotiation Engine</span>
-                        <span class="step-subtitle-text">(Agent-to-Agent Microservice Handshake)</span>
-                    </div>
-                </div>
-                <div class="dialog-bubble-buyer">
-                    <b>📤 [Round 1 Bid] Buyer ➔ {rfq_res['vendor_name']}:</b> Requesting {order_qty} units of '{target_prod}'. Opening bid: <b>${rfq_res['list_price']*0.88:.2f}/unit</b>.
-                </div>
-                <div class="dialog-bubble-vendor">
-                    <b>📥 [Round 2 Counter] {rfq_res['vendor_name']} Agent:</b> Volume counter-offer for {order_qty} units: <b>${rfq_res['negotiated_price']:.2f}/unit</b> ({rfq_res['delivery_days']}-day delivery).
-                </div>
-                <div class="dialog-bubble-success">
-                    <b>🤝 [Round 3 Agreement Sealed] Buyer ➔ {rfq_res['vendor_name']}:</b> Confirmed {order_qty} units @ <b>${rfq_res['negotiated_price']:.2f}/unit</b>. Total PO: <b>${rfq_res['total_cost']:.2f}</b> (Saved: <b>${rfq_res['cost_saved']:.2f}</b>).
-                </div>
-            </div>
-            """), unsafe_allow_html=True)
-            
-            # Step 5: Execute Purchase Order with Budget Guard Check
-            po_total = rfq_res["total_cost"]
-            if check_approval_required(po_total):
-                st.markdown(esc(f"""
-                <div class="optimizer-card" style="border-left: 5px solid #f59e0b;">
-                    <div class="step-header">
-                        <div class="step-badge" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">5</div>
-                        <div>
-                            <span class="step-title-text">🛑 Human Approval Required</span>
-                            <span class="step-subtitle-text">(Order Total ${po_total:.2f} Exceeds $500 Autonomous Threshold)</span>
-                        </div>
-                    </div>
-                    <p style="font-size:0.9rem; color:{'#94a3b8' if is_dark_mode else '#64748b'}; margin-bottom:0;">
-                        Order total of <b>${po_total:.2f}</b> ({order_qty} units @ ${rfq_res['negotiated_price']:.2f}/unit) requires manager confirmation before dispatch. Please authorize in Tab 2 (Chat Terminal).
-                    </p>
-                </div>
-                """), unsafe_allow_html=True)
+            if not plan.get("success"):
+                st.warning(f"⚠️ {plan.get('message')}")
             else:
-                exec_res = execute_order(top_v.get("vendor_id", "V-CLARK"), pid_sel, order_qty, rfq_res["negotiated_price"], actor="WAR_ROOM")
-                
-                st.markdown(esc(f"""
+                final_q = plan["final_quantity"]
+                unit_p = plan["unit_price"]
+                po_total = plan["total_cost"]
+                deliv_days = plan["delivery_days"]
+                deliv_lbl = f"{deliv_days} day" if deliv_days == 1 else f"{deliv_days} days"
+                v_name = plan["vendor_name"]
+
+                # Step 4: Multi-Round A2A Negotiation Handshake
+                adj_note = f"<br><i>Note: {plan['adjustment_reason']}</i>" if plan.get("adjusted") else ""
+                st.markdown(f"""
                 <div class="optimizer-card">
                     <div class="step-header">
-                        <div class="step-badge" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">5</div>
+                        <div class="step-badge" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">4</div>
                         <div>
-                            <span class="step-title-text">Atomic Purchase Order Dispatched</span>
-                            <span class="step-subtitle-text">(PO {exec_res.get('po_id')} Dispatched • Status: IN_TRANSIT)</span>
+                            <span class="step-title-text">Autonomous Multi-Round A2A Negotiation Engine</span>
+                            <span class="step-subtitle-text">(Agent-to-Agent Microservice Handshake)</span>
                         </div>
                     </div>
-                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
-                        <div class="sub-metric-box">
-                            <div class="sub-metric-label">PO ID</div>
-                            <div class="sub-metric-val" style="font-size:1.1rem; color:#38bdf8;">{exec_res.get('po_id')}</div>
-                            <div class="sub-metric-unit">Dispatched</div>
-                        </div>
-                        <div class="sub-metric-box">
-                            <div class="sub-metric-label">PO Quantity</div>
-                            <div class="sub-metric-val" style="color: #2563eb;">+{exec_res.get('ordered_quantity', order_qty)}</div>
-                            <div class="sub-metric-unit">units ordered</div>
-                        </div>
-                        <div class="sub-metric-box">
-                            <div class="sub-metric-label">PO Lifecycle Status</div>
-                            <div class="sub-metric-val" style="color: #f59e0b; font-size:1.15rem;">IN_TRANSIT</div>
-                            <div class="sub-metric-unit">Delivery: {exec_res.get('expected_delivery')}</div>
-                        </div>
+                    <div class="dialog-bubble-buyer">
+                        <b>📤 [Round 1 Bid] Buyer ➔ {v_name}:</b> Requesting {final_q} units of '{target_prod}'. Opening bid: <b>${plan['list_price']*0.88:.2f}/unit</b>.{adj_note}
+                    </div>
+                    <div class="dialog-bubble-vendor">
+                        <b>📥 [Round 2 Counter] {v_name} Agent:</b> Volume counter-offer for {final_q} units: <b>${unit_p:.2f}/unit</b> ({deliv_lbl} delivery).
+                    </div>
+                    <div class="dialog-bubble-success">
+                        <b>🤝 [Round 3 Agreement Sealed] Buyer ➔ {v_name}:</b> Confirmed {final_q} units @ <b>${unit_p:.2f}/unit</b>. Total PO: <b>${po_total:.2f}</b> (Saved: <b>${plan['cost_saved']:.2f}</b>).
                     </div>
                 </div>
-                """), unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
+                
+                # Step 5: Execute Purchase Order with Budget Guard Check
+                if plan.get("needs_approval"):
+                    st.markdown(f"""
+                    <div class="optimizer-card" style="border-left: 5px solid #f59e0b;">
+                        <div class="step-header">
+                            <div class="step-badge" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">5</div>
+                            <div>
+                                <span class="step-title-text">🛑 Human Approval Required</span>
+                                <span class="step-subtitle-text">(Order Total ${po_total:.2f} Exceeds $500 Autonomous Threshold)</span>
+                            </div>
+                        </div>
+                        <p style="font-size:0.9rem; color:{'#94a3b8' if is_dark_mode else '#64748b'}; margin-bottom:12px;">
+                            Order total of <b>${po_total:.2f}</b> ({final_q} units @ ${unit_p:.2f}/unit from {v_name}) requires manager confirmation before dispatch.
+                        </p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    if st.button("✅ Authorize & Dispatch This Order Now", type="primary", use_container_width=True, key="war_room_auth_btn"):
+                        exec_res = execute_order(
+                            vendor_id=plan["vendor_id"],
+                            product_id=pid_sel,
+                            quantity=final_q,
+                            price=unit_p,
+                            actor="STORE_MANAGER",
+                            savings=plan["cost_saved"],
+                            list_price=plan["list_price"],
+                            guard_msg=plan.get("adjustment_reason")
+                        )
+                        st.success(f"PO {exec_res['po_id']} authorized and dispatched! Expected delivery: {exec_res['expected_delivery']}.")
+                        time.sleep(0.5)
+                        st.rerun()
+                else:
+                    exec_res = execute_order(
+                        vendor_id=plan["vendor_id"],
+                        product_id=pid_sel,
+                        quantity=final_q,
+                        price=unit_p,
+                        actor="WAR_ROOM",
+                        savings=plan["cost_saved"],
+                        list_price=plan["list_price"],
+                        guard_msg=plan.get("adjustment_reason")
+                    )
+                    
+                    st.markdown(f"""
+                    <div class="optimizer-card">
+                        <div class="step-header">
+                            <div class="step-badge" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">5</div>
+                            <div>
+                                <span class="step-title-text">Atomic Purchase Order Dispatched</span>
+                                <span class="step-subtitle-text">(PO {exec_res.get('po_id')} Dispatched • Status: IN_TRANSIT)</span>
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+                            <div class="sub-metric-box">
+                                <div class="sub-metric-label">PO ID</div>
+                                <div class="sub-metric-val" style="font-size:1.1rem; color:#38bdf8;">{exec_res.get('po_id')}</div>
+                                <div class="sub-metric-unit">Dispatched</div>
+                            </div>
+                            <div class="sub-metric-box">
+                                <div class="sub-metric-label">PO Quantity</div>
+                                <div class="sub-metric-val" style="color: #2563eb;">+{exec_res.get('ordered_quantity', final_q)}</div>
+                                <div class="sub-metric-unit">units ordered</div>
+                            </div>
+                            <div class="sub-metric-box">
+                                <div class="sub-metric-label">PO Lifecycle Status</div>
+                                <div class="sub-metric-val" style="color: #f59e0b; font-size:1.15rem;">IN_TRANSIT</div>
+                                <div class="sub-metric-unit">Delivery: {exec_res.get('expected_delivery')}</div>
+                            </div>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
 
 # -------------------------------------------------------------
 # TAB 2: MULTI-AGENT CHAT TERMINAL
@@ -624,21 +717,25 @@ with tab_chat:
         st.markdown("---")
         st.warning("⚠️ **Pending Order Authorization Required**")
         original_value = deal['quantity'] * deal['unit_price']
-        
+        deliv_days = deal.get('delivery_days', 2)
+        deliv_str = f"{deliv_days} day" if deliv_days == 1 else f"{deliv_days} days"
+        adj_line = f"<li><b>Quantity Adjustment:</b> <span style='color:#d97706; font-weight:600;'>{deal.get('adjustment_reason')}</span></li>" if deal.get('adjusted') else ""
+
         st.markdown(f"""
         <div class="optimizer-card" style="border-left: 5px solid #f59e0b;">
             <h4 style="margin-top:0; color:#0f172a;">📋 Order Details Awaiting Manager Approval</h4>
             <ul style="color:#334155; font-size:0.95rem; line-height:1.8;">
                 <li><b>Product:</b> {deal['product_name']}</li>
                 <li><b>Vendor:</b> {deal['vendor_name']}</li>
-                <li><b>Requested Quantity:</b> {deal['quantity']} units</li>
+                <li><b>Approved Quantity:</b> <b>{deal['quantity']} units</b></li>
+                {adj_line}
                 <li><b>Negotiated Unit Price:</b> ${deal['unit_price']:.2f}</li>
-                <li><b>Negotiated Total:</b> <b style="color:#2563eb;">${original_value:.2f}</b></li>
+                <li><b>Negotiated Total:</b> <b style="color:#2563eb;">${deal.get('total_cost', original_value):.2f}</b></li>
                 <li><b>List Price Total:</b> <span style="text-decoration: line-through; color:#64748b;">${deal.get('list_total', original_value):.2f}</span> <span style="color:#16a34a; font-weight:600;">(Saved ${deal.get('cost_saved', 0.0):.2f})</span></li>
-                <li><b>Delivery Lead Time:</b> {deal.get('delivery_days', 2)} days</li>
+                <li><b>Delivery Lead Time:</b> {deliv_str}</li>
             </ul>
             <p style="color:#64748b; font-size:0.85rem; margin-top:10px; margin-bottom:0;">
-                <i>This order total (${original_value:.2f}) exceeds the $500.00 autonomous threshold. Manager confirmation is required.</i>
+                <i>This order total (${deal.get('total_cost', original_value):.2f}) exceeds the $500.00 autonomous threshold. Manager confirmation is required.</i>
             </p>
         </div>
         """, unsafe_allow_html=True)
@@ -651,10 +748,23 @@ with tab_chat:
                     product_id=deal["product_id"],
                     quantity=deal["quantity"],
                     price=deal["unit_price"],
-                    actor="STORE_MANAGER"
+                    actor="STORE_MANAGER",
+                    savings=deal.get("cost_saved"),
+                    list_price=deal.get("list_price"),
+                    guard_msg=deal.get("adjustment_reason")
                 )
                 
                 if exec_res.get("success"):
+                    # Record audit event PO_APPROVED
+                    conn = sqlite3.connect("optivendor_store.db")
+                    cur = conn.cursor()
+                    cur.execute("""
+                        INSERT INTO audit_log (timestamp, event_type, actor, product_id, vendor_id, po_id, details)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """, (datetime.datetime.now().isoformat(), "PO_APPROVED", "STORE_MANAGER", deal['product_id'], deal['vendor_id'], exec_res['po_id'], f"Manager approved PO {exec_res['po_id']} for {deal['quantity']} units @ ${deal['unit_price']:.2f}/unit (Total: ${exec_res['total_value']:.2f})."))
+                    conn.commit()
+                    conn.close()
+
                     success_msg = esc(
                         f"✅ **Purchase Order Approved & Dispatched!**\n\n"
                         f"- **Product:** {deal['product_name']}\n"
@@ -677,7 +787,7 @@ with tab_chat:
                 reject_msg = esc(
                     f"❌ **Purchase Order Rejected by Manager**\n\n"
                     f"The order for **{deal['quantity']} units** of **{deal['product_name']}** "
-                    f"(Total: **${original_value:.2f}**) has been rejected. No PO dispatched."
+                    f"(Total: **${deal.get('total_cost', original_value):.2f}**) has been rejected. No PO dispatched."
                 )
                 st.session_state["chat_history"].append({"role": "assistant", "content": reject_msg})
                 
@@ -688,7 +798,7 @@ with tab_chat:
                 cur.execute("""
                     INSERT INTO audit_log (timestamp, event_type, actor, product_id, vendor_id, po_id, details)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
-                """, (now_str, "PO_REJECTED", "STORE_MANAGER", deal['product_id'], deal['vendor_id'], None, f"Manager rejected PO request for {deal['quantity']} units of {deal['product_name']} (Total: ${original_value:.2f})."))
+                """, (now_str, "PO_REJECTED", "STORE_MANAGER", deal['product_id'], deal['vendor_id'], None, f"Manager rejected PO request for {deal['quantity']} units of {deal['product_name']} (Total: ${deal.get('total_cost', original_value):.2f})."))
                 conn.commit()
                 conn.close()
                 
@@ -781,10 +891,15 @@ with tab_pos:
     df_inv = get_inventory_table()
     if not df_inv.empty:
         st.dataframe(
-            df_inv.style.apply(
-                lambda row: ['background-color: #fee2e2; font-weight: bold;' if 'CRITICAL' in str(row['Health Status']) else ('background-color: #fef3c7;' if 'LOW' in str(row['Health Status']) else '') for _ in row],
-                axis=1
-            ),
+            df_inv,
+            column_config={
+                "sales_velocity_daily": st.column_config.NumberColumn("Velocity (units/day)", format="%.1f"),
+                "Days of Supply": st.column_config.NumberColumn("Days of Supply", format="%.1f"),
+                "stock_quantity": st.column_config.NumberColumn("On-Hand Stock"),
+                "Inbound (On Order)": st.column_config.NumberColumn("On Order (Inbound)"),
+                "Inventory Position": st.column_config.NumberColumn("Inventory Position"),
+                "target_stock_level": st.column_config.NumberColumn("Target Capacity"),
+            },
             use_container_width=True,
             hide_index=True
         )
@@ -811,7 +926,16 @@ with tab_pos:
     conn.close()
 
     if not df_po.empty:
-        st.dataframe(df_po, use_container_width=True, hide_index=True)
+        st.dataframe(
+            df_po,
+            column_config={
+                "unit_price": st.column_config.NumberColumn("Unit Price ($)", format="$%.2f"),
+                "total_cost": st.column_config.NumberColumn("Total Cost ($)", format="$%.2f"),
+                "savings": st.column_config.NumberColumn("Savings ($)", format="$%.2f"),
+            },
+            use_container_width=True,
+            hide_index=True
+        )
         
         # Action Bar to Simulate Receipt for IN_TRANSIT orders
         in_transit_pos = df_po[df_po["status"] == "IN_TRANSIT"]
@@ -846,6 +970,18 @@ with tab_pos:
     with col_log:
         st.markdown("**🛡️ System Audit Trail (`audit_log`)**")
         if not df_audit.empty:
-            st.dataframe(df_audit, use_container_width=True, hide_index=True)
+            st.dataframe(
+                df_audit,
+                column_config={
+                    "timestamp": st.column_config.TextColumn("Timestamp", width="medium"),
+                    "event_type": st.column_config.TextColumn("Event", width="small"),
+                    "actor": st.column_config.TextColumn("Actor", width="small"),
+                    "product_id": st.column_config.TextColumn("Product", width="small"),
+                    "po_id": st.column_config.TextColumn("PO ID", width="small"),
+                    "details": st.column_config.TextColumn("Event Details", width="large")
+                },
+                use_container_width=True,
+                hide_index=True
+            )
         else:
             st.info("Audit log initialized.")
