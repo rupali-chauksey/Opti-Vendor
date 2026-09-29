@@ -427,6 +427,31 @@ streamlit run app.py
 | Data | Pandas |
 | Language | Python 3.10+ |
 
+## 🏛️ System Architecture & Deterministic Execution
+
+```mermaid
+flowchart LR
+    A["👤 User / Trigger"] --> B["🧠 Orchestrator"]
+    B --> C["📊 Shelf Monitor"]
+    C --> D["📜 Strategic Policy"]
+    D --> E["🔍 Marketplace Discovery"]
+    E --> F["💬 A2A Negotiator"]
+    F --> G["🛡️ Safety Guardrails"]
+    G --> H["📋 Purchase Order"]
+```
+
+> **Deterministic Math & Decision Engine Note:**  
+> In OptiVendor, Large Language Models (LLMs) are used strictly for intent classification, query extraction, and phrasing natural language feedback.  
+> **All numerical calculations, order sizing, shelf-life and capacity caps, price ceiling compliance, multi-round negotiation tiers, vendor scoring, and budget thresholds are calculated 100% deterministically in Python.**
+
+---
+
+## ⚠️ Known Limitations
+
+1. **Simulated Vendors:** Competing vendor microservices and pricing endpoints are currently simulated via mock catalog databases and simulated HTTP endpoints rather than live third-party EDI systems.
+2. **Static Sales Velocity:** Daily consumption velocities (`sales_velocity_daily`) are based on fixed historical averages rather than real-time dynamic Poisson forecasting or weather/seasonality models.
+3. **Single Store Scope:** The current POS inventory database represents a single retail grocery footprint rather than a multi-echelon central distribution center network with intra-warehouse transfers.
+
 ---
 
 ## 📁 Project Structure

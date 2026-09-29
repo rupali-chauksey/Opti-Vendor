@@ -301,6 +301,7 @@ def execute_order(
             product_id TEXT,
             vendor_id TEXT,
             po_id TEXT,
+            reason TEXT,
             details TEXT NOT NULL
         )
     """)
@@ -366,9 +367,9 @@ def execute_order(
         audit_msg += f" [{final_guard_msg}]"
         
     cursor.execute("""
-        INSERT INTO audit_log (timestamp, event_type, actor, product_id, vendor_id, po_id, details)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    """, (now_str, "PO_CREATED", actor, product_id, vendor_id, po_id, audit_msg))
+        INSERT INTO audit_log (timestamp, event_type, actor, product_id, vendor_id, po_id, reason, details)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, (now_str, "PO_CREATED", actor, product_id, vendor_id, po_id, "PO dispatched to supplier", audit_msg))
 
     conn.commit()
     conn.close()
@@ -420,6 +421,17 @@ def receive_purchase_order(po_id: str, actor: str = "STORE_MANAGER") -> Dict[str
     # 1. Update Inventory Stock
     cursor.execute("UPDATE inventory SET stock_quantity = stock_quantity + ? WHERE product_id = ?", (qty, p_id))
     
+    # 1b. Create new batch in inventory_batches (FEFO tracking)
+    batch_id = f"BATCH-{p_id[2:]}-{po_id}"
+    batch_exp = (datetime.date.today() + datetime.timedelta(days=60)).isoformat()
+    try:
+        cursor.execute("""
+            INSERT INTO inventory_batches (batch_id, product_id, qty, expiry_date, created_at)
+            VALUES (?, ?, ?, ?, ?)
+        """, (batch_id, p_id, qty, batch_exp, now_str))
+    except Exception:
+        pass
+
     # 2. Update PO Status
     cursor.execute("UPDATE purchase_orders SET status = 'RECEIVED', updated_at = ? WHERE po_id = ?", (now_str, po_id))
     
@@ -437,9 +449,9 @@ def receive_purchase_order(po_id: str, actor: str = "STORE_MANAGER") -> Dict[str
     
     # 5. Insert into audit_log
     cursor.execute("""
-        INSERT INTO audit_log (timestamp, event_type, actor, product_id, vendor_id, po_id, details)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    """, (now_str, "PO_RECEIVED", actor, p_id, v_id, po_id, f"Received shipment for PO {po_id}: +{qty} units of {prod_name}. On-hand stock is now {new_stock} units."))
+        INSERT INTO audit_log (timestamp, event_type, actor, product_id, vendor_id, po_id, reason, details)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, (now_str, "PO_RECEIVED", actor, p_id, v_id, po_id, "Shipment delivered and verified", f"Received shipment for PO {po_id}: +{qty} units of {prod_name}. On-hand stock is now {new_stock} units."))
     
     conn.commit()
     conn.close()

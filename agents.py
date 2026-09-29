@@ -8,7 +8,7 @@ from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 
 from tools import query_inventory, fetch_vendors, send_a2a_rfq, execute_order
-from engine import check_approval_required, get_product_policy, esc, plan_order, get_inbound_qty
+from engine import check_approval_required, get_product_policy, esc, plan_order, get_inbound_qty, get_inventory_summary_groups
 
 # Configure Trace Logging
 logging.basicConfig(
@@ -125,6 +125,7 @@ def orchestrator_node(state: AgentState) -> Dict[str, Any]:
 def shelf_monitor_node(state: AgentState) -> Dict[str, Any]:
     """
     Node 2: Scans Inventory Health & Ingests Strategic Procurement Policy.
+    Suppresses product procurement policy trace line when target_product is None.
     """
     intent = state.get("intent")
     filter_type = state.get("filter_type", "OUT_OF_STOCK")
@@ -135,17 +136,20 @@ def shelf_monitor_node(state: AgentState) -> Dict[str, Any]:
 
     items = query_inventory(filter_type=filter_type, product_name=target_product)
 
-    active_name = items[0]["name"] if items else target_product
-    pid = items[0]["product_id"] if items else "P-OAT1"
-
-    if intent == "NEGOTIATE_RESTOCK" and target_product:
-        policy = get_product_policy(pid)
-        trace_msg = (
-            f"Node 2 (Shelf Monitor Agent): Ingested procurement policy for '{active_name}' (PID: {pid}). "
-            f"Policy Ceiling Price: ${policy.get('max_unit_price'):.2f}/unit ✓. Scanned {len(items)} matching inventory records."
-        )
+    if target_product:
+        active_name = items[0]["name"] if items else target_product
+        pid = items[0]["product_id"] if items else "P-OAT1"
+        if intent == "NEGOTIATE_RESTOCK":
+            policy = get_product_policy(pid)
+            trace_msg = (
+                f"Node 2 (Shelf Monitor Agent): Ingested procurement policy for '{active_name}' (PID: {pid}). "
+                f"Policy Ceiling Price: ${policy.get('max_unit_price'):.2f}/unit ✓. Scanned {len(items)} matching inventory records."
+            )
+        else:
+            trace_msg = f"Node 2 (Shelf Monitor Agent): Scanned stock level for '{active_name}' ({len(items)} matching records)."
     else:
-        trace_msg = f"Node 2 (Shelf Monitor Agent): Scanned inventory health and stock levels ({len(items)} matching records)."
+        active_name = None
+        trace_msg = f"Node 2 (Shelf Monitor Agent): Completed full scan across all {len(items)} store catalog products ({len(items)} records monitored)."
 
     return {
         "inventory_results": items,
@@ -165,7 +169,7 @@ def negotiation_node(state: AgentState) -> Dict[str, Any]:
     pid = conn_check[0]["product_id"] if conn_check else "P-OAT1"
 
     # Use single source of truth order planner
-    plan = plan_order(product_id=pid, requested_quantity=qty)
+    plan = plan_order(product_id=pid, requested_qty=qty)
 
     if not plan.get("success"):
         fail_msg = plan.get("message", "Could not formulate procurement plan.")
@@ -175,37 +179,31 @@ def negotiation_node(state: AgentState) -> Dict[str, Any]:
             "trace_steps": [f"Node 3 (A2A Negotiator): Planning halted - {fail_msg}"]
         }
 
-    deal = {
-        "vendor_id": plan["vendor_id"],
-        "vendor_name": plan["vendor_name"],
-        "vendor_endpoint": plan["vendor_endpoint"],
-        "vendor_score": plan["vendor_score"],
-        "product_id": plan["product_id"],
-        "product_name": plan["product_name"],
-        "quantity": plan["final_quantity"],
-        "requested_quantity": plan["requested_quantity"],
-        "unit_price": plan["unit_price"],
-        "list_price": plan["list_price"],
-        "total_cost": plan["total_cost"],
-        "list_total": plan["list_total"],
-        "cost_saved": plan["cost_saved"],
-        "delivery_days": plan["delivery_days"],
-        "needs_approval": plan["needs_approval"],
-        "adjusted": plan["adjusted"],
-        "adjustment_reason": plan["adjustment_reason"],
-        "rounds": plan["rounds"]
-    }
+    deal = plan.to_dict()
 
     deliv_label = f"{plan['delivery_days']} day" if plan['delivery_days'] == 1 else f"{plan['delivery_days']} days"
-    trace_msg = (
-        f"Node 3 (A2A Negotiator): Multi-round A2A handshake with '{plan['vendor_name']}' "
-        f"(Composite Score: {plan['vendor_score']}, Delivery: {deliv_label}). Agreed Price ${plan['unit_price']:.2f}/unit "
-        f"(List Price: ${plan['list_price']:.2f}, Savings: ${plan['cost_saved']:.2f})."
-    )
+    trace_list = []
 
-    trace_list = [trace_msg]
+    # Show disqualified vendors if quote exceeded ceiling
+    for dq in plan.disqualified_vendors:
+        trace_list.append(f"Node 3 (Marketplace Discovery): Disqualified '{dq['name']}': {dq['reason']}.")
+
+    if plan.savings <= 0.0:
+        trace_msg = (
+            f"Node 3 (A2A Negotiator): Multi-round A2A handshake with '{plan['vendor_name']}' "
+            f"(Score: {deal.get('vendor_score', 0.95):.2f}, Delivery: {deliv_label}). "
+            f"No volume tier eligible, list price accepted (${plan['unit_price']:.2f}/unit)."
+        )
+    else:
+        trace_msg = (
+            f"Node 3 (A2A Negotiator): Multi-round A2A handshake with '{plan['vendor_name']}' "
+            f"(Score: {deal.get('vendor_score', 0.95):.2f}, Delivery: {deliv_label}). Agreed Price ${plan['unit_price']:.2f}/unit "
+            f"(List Price: ${plan['list_price']:.2f}, Savings: ${plan['cost_saved']:.2f})."
+        )
+    trace_list.append(trace_msg)
+
     if plan.get("adjusted"):
-        trace_list.append(f"Node 3 (Safety Guardrails): {plan['adjustment_reason']}")
+        trace_list.append(f"Node 3 (Order Planner Guardrail): {plan['adjustment_reason']}")
 
     return {
         "agreed_deal": deal,
@@ -226,21 +224,23 @@ def execution_node(state: AgentState) -> Dict[str, Any]:
 
     total_value = deal["total_cost"]
 
-    # Budget Guard Check (> $500 threshold)
+    # Approval Guard Check (> $500 threshold OR 5x recommended quantity rule)
     if deal.get("needs_approval"):
-        log_msg = f"🛑 [Node 4: Budget Guard] Order value ${total_value:.2f} > $500 threshold. Manager approval required."
+        reasons = deal.get("approval_reasons") or []
+        reason_text = " ".join(reasons) if reasons else f"Order total ${total_value:.2f} exceeds $500.00 autonomous threshold."
+        log_msg = f"🛑 [Node 4: Budget Guard] Approval required: {reason_text}"
         logging.warning(log_msg)
         return {
             "human_approval_needed": True,
             "execution_result": {
                 "success": False,
                 "status": "PENDING_APPROVAL",
-                "message": f"Human approval required. Total order value ${total_value:.2f} exceeds the $500 autonomous threshold."
+                "message": f"Human approval required. {reason_text}"
             },
-            "trace_steps": [f"Node 4 (Safety Guardrails): Order total ${total_value:.2f} > $500 threshold. Intercepted for Manager Approval."]
+            "trace_steps": [f"Node 4 (Safety Guardrails): Intercepted for Manager Approval ({reason_text})."]
         }
 
-    # Autonomous Execution (< $500)
+    # Autonomous Execution (< $500 and compliant)
     exec_res = execute_order(
         vendor_id=deal["vendor_id"],
         product_id=deal["product_id"],
@@ -308,23 +308,57 @@ def output_formatter_node(state: AgentState) -> Dict[str, Any]:
                     + "\n\nI recommend prioritizing these batches or applying promotional discounts to prevent waste."
                 )
         else:
-            # Deterministic scan of all store inventory to avoid contradictory summaries
-            all_prods = query_inventory(filter_type="ALL")
-            crit_prods = [p for p in all_prods if p.get("status") == "CRITICAL_STOCKOUT" or (p["sales_velocity_daily"] > 0 and p["days_of_supply"] < 2.0 and p["stock_quantity"] > 0)]
-            low_prods = [p for p in all_prods if (p.get("status") == "LOW_STOCK" or p["stock_quantity"] <= 0.5 * p["target_stock_level"]) and p not in crit_prods]
-            opt_prods = [p for p in all_prods if p not in crit_prods and p not in low_prods]
+            # Deterministic scan of all store inventory grouped by health status
+            groups = get_inventory_summary_groups()
+            stockout_arr_prods = groups.get("STOCKOUT_BEFORE_ARRIVAL", [])
+            crit_prods = groups.get("CRITICAL_STOCKOUT", [])
+            in_transit_prods = groups.get("REPLENISHMENT_IN_TRANSIT", [])
+            exp_prods = groups.get("EXPIRY_RISK", [])
+            low_prods = groups.get("LOW_STOCK", [])
+            over_prods = groups.get("OVERSTOCKED", [])
+            opt_prods = groups.get("OPTIMAL", [])
 
             lines = ["I checked your store inventory. Currently, no items are completely out of stock (0 units).\n"]
+
+            if stockout_arr_prods:
+                lines.append("⚠️ **Stockout Before Arrival Warning (Action Required)**:")
+                for s in stockout_arr_prods:
+                    dos_str = f"{s['days_of_supply']} day" if s['days_of_supply'] == 1.0 else f"{s['days_of_supply']} days"
+                    lines.append(f"• **{s['name']} ({s['product_id']})**: Only **{s['stock_quantity']} units** on hand ({dos_str} of supply), but replenishment lead time is 2 days (+{s['inbound_qty']} units inbound). **Shelf will stock out before the shipment arrives!** Suggest expediting transit or ordering an emergency buffer.")
+                lines.append("")
+
             if crit_prods:
                 lines.append("🚨 **Critical Stockout Risk (< 1.0 Day of Supply)**:")
                 for c in crit_prods:
-                    lines.append(f"• **{c['name']} ({c['product_id']})**: Only **{c['stock_quantity']} units** left, with a daily sales velocity of **{c['sales_velocity_daily']:.1f} units/day**. This means it has less than 1 day of supply (**{c['days_of_supply']} days**) remaining.")
+                    dos_str = f"{c['days_of_supply']} day" if c['days_of_supply'] == 1.0 else f"{c['days_of_supply']} days"
+                    lines.append(f"• **{c['name']} ({c['product_id']})**: Only **{c['stock_quantity']} units** left, with a daily sales velocity of **{c['sales_velocity_daily']:.1f} units/day**. This means it has less than 1 day of supply (**{dos_str}**) remaining.")
+                lines.append("")
+
+            if in_transit_prods:
+                lines.append("🚚 **Replenishment In Transit**:")
+                for it in in_transit_prods:
+                    lines.append(f"• **{it['name']} ({it['product_id']})**: {it['stock_quantity']} units on-hand, **+{it['inbound_qty']} units IN_TRANSIT** (Target: {it['target_stock_level']}).")
+                lines.append("")
+
+            if exp_prods:
+                lines.append("⏳ **Expiration Risk (Batch Spoilage Alert)**:")
+                for ex in exp_prods:
+                    d_exp = ex['days_until_expiry']
+                    d_exp_str = f"{d_exp} day" if d_exp == 1 else f"{d_exp} days"
+                    lines.append(f"• **{ex['name']} ({ex['product_id']})**: {ex['stock_quantity']} units on hand, expires in **{d_exp_str}** ({ex['expiration_date']}).")
                 lines.append("")
 
             if low_prods:
                 lines.append("⚠️ **Low Stock Warnings (< 50% target capacity)**:")
                 for l in low_prods:
-                    lines.append(f"• **{l['name']} ({l['product_id']})**: {l['stock_quantity']} units (Target: {l['target_stock_level']}, {l['days_of_supply']} days supply). Status: {l.get('status')}.")
+                    dos_str = f"{l['days_of_supply']} day" if l['days_of_supply'] == 1.0 else f"{l['days_of_supply']} days"
+                    lines.append(f"• **{l['name']} ({l['product_id']})**: {l['stock_quantity']} units (Target: {l['target_stock_level']}, {dos_str} supply). Status: LOW_STOCK.")
+                lines.append("")
+
+            if over_prods:
+                lines.append("📦 **Overstocked Items (> Target Capacity)**:")
+                for o in over_prods:
+                    lines.append(f"• **{o['name']} ({o['product_id']})**: {o['stock_quantity']} units (Target: {o['target_stock_level']}).")
                 lines.append("")
 
             if opt_prods:
@@ -336,12 +370,16 @@ def output_formatter_node(state: AgentState) -> Dict[str, Any]:
     elif intent == "NEGOTIATE_RESTOCK":
         if human_needed:
             adj_note = f"\n\nNote: {deal['adjustment_reason']}" if deal.get("adjusted") else ""
-            req_qty = deal.get('requested_quantity', deal['quantity'])
-            cost_val = req_qty * deal['unit_price']
+            total_val = deal['total_cost']
+            reasons = deal.get('approval_reasons') or []
+            if reasons:
+                approval_cause = f"Because {reasons[0].lower() if (reasons[0].startswith('Total') or reasons[0].startswith('Requested') or reasons[0].startswith('Order')) else reasons[0]}, manager confirmation is required before placing the order."
+            else:
+                approval_cause = f"Because the order total is **${total_val:.2f}** (which exceeds the **$500.00** autonomous threshold), manager confirmation is required before placing the order."
             final_text = (
                 f"⚠️ **Human Approval Required**\n\n"
-                f"We negotiated a purchase deal with **{deal['vendor_name']}** for **{deal['quantity']} units** of **{deal['product_name']}** at **${deal['unit_price']:.2f}/unit**.\n\n"
-                f"Because the order value is **${cost_val:.2f}** (which exceeds the **$500.00** autonomous threshold), manager confirmation is required before placing the order.{adj_note}"
+                f"We negotiated a purchase deal with **{deal['vendor_name']}** for **{deal['quantity']} units** of **{deal['product_name']}** at **${deal['unit_price']:.2f}/unit** (Total: **${total_val:.2f}**).\n\n"
+                f"{approval_cause}{adj_note}"
             )
         elif exec_res and exec_res.get("success"):
             warning = f"\n\nNote: {exec_res.get('guard_warning')}" if exec_res.get("guard_warning") else ""

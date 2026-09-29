@@ -27,6 +27,7 @@ def init_database(db_path: str = DB_PATH):
     cursor.execute("DROP TABLE IF EXISTS purchase_orders")
     cursor.execute("DROP TABLE IF EXISTS audit_log")
     cursor.execute("DROP TABLE IF EXISTS stock_movements")
+    cursor.execute("DROP TABLE IF EXISTS inventory_batches")
 
     # 1. Create Table: inventory
     cursor.execute("""
@@ -39,6 +40,18 @@ def init_database(db_path: str = DB_PATH):
         target_stock_level INTEGER NOT NULL,
         vendor_id TEXT NOT NULL,
         expiration_date TEXT NOT NULL
+    )
+    """)
+
+    # 1b. Create Table: inventory_batches (Batch-Level Expiry & FEFO)
+    cursor.execute("""
+    CREATE TABLE inventory_batches (
+        batch_id TEXT PRIMARY KEY,
+        product_id TEXT NOT NULL,
+        qty INTEGER NOT NULL,
+        expiry_date TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (product_id) REFERENCES inventory (product_id)
     )
     """)
 
@@ -98,6 +111,7 @@ def init_database(db_path: str = DB_PATH):
         product_id TEXT,
         vendor_id TEXT,
         po_id TEXT,
+        reason TEXT,
         details TEXT NOT NULL
     )
     """)
@@ -150,6 +164,14 @@ def init_database(db_path: str = DB_PATH):
     ]
     cursor.executemany("INSERT INTO inventory VALUES (?, ?, ?, ?, ?, ?, ?, ?)", inventory_data)
 
+    # 8b. Seed Initial Batches for inventory_batches (FEFO foundation)
+    init_time_str = datetime.datetime.now().isoformat()
+    batches_data = [
+        (f"BATCH-{item[0][2:]}-INIT", item[0], item[3], item[7], init_time_str)
+        for item in inventory_data
+    ]
+    cursor.executemany("INSERT INTO inventory_batches (batch_id, product_id, qty, expiry_date, created_at) VALUES (?, ?, ?, ?, ?)", batches_data)
+
     # 9. Insert Competing Vendor Offers
     offers_data = [
         ("V-CLARK", "P-OAT1", 3.42, 2, get_date(65)),
@@ -174,9 +196,9 @@ def init_database(db_path: str = DB_PATH):
     # 10. Initial Baseline Audit Entry
     now_str = datetime.datetime.now().isoformat()
     cursor.execute("""
-        INSERT INTO audit_log (timestamp, event_type, actor, product_id, vendor_id, po_id, details)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    """, (now_str, "SYSTEM_INIT", "SYSTEM", None, None, None, "Database reset to baseline demo state (10 products, 11 vendors)."))
+        INSERT INTO audit_log (timestamp, event_type, actor, product_id, vendor_id, po_id, reason, details)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, (now_str, "SYSTEM_INIT", "SYSTEM", None, None, None, "Database Initialization", "Database reset to baseline demo state (10 products, 11 vendors)."))
 
     conn.commit()
     conn.close()
