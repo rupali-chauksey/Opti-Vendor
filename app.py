@@ -40,15 +40,8 @@ if "app_theme" not in st.session_state:
 
 # Theme Selector in Sidebar (processed first)
 with st.sidebar:
-    st.markdown(
-        """
-        <div style="display: flex; justify-content: center; align-items: center; padding-top: 6px; padding-bottom: 12px;">
-            <img src="https://img.icons8.com/color/96/bot.png" width="60" style="filter: drop-shadow(0px 4px 8px rgba(0, 0, 0, 0.3));">
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-    st.markdown("### Theme Mode")
+    st.image("https://img.icons8.com/color/96/bot.png", width=52)
+    st.markdown("### 🎨 Theme Mode")
     theme_choice = st.selectbox(
         "Select Interface Theme:",
         ["🌙 Control Tower (Dark)", "☀️ Enterprise (Light)"],
@@ -101,43 +94,6 @@ if is_dark_mode:
         }
         section[data-testid="stSidebar"] * {
             color: #e2e8f0 !important;
-        }
-        
-        /* Bulletproof High-Contrast Selectbox Styling for Dark Mode */
-        div[data-testid="stSelectbox"] div[data-baseweb="select"],
-        div[data-testid="stSelectbox"] div[data-baseweb="select"] > div,
-        div[data-testid="stSelectbox"] div[role="combobox"],
-        div[data-baseweb="select"],
-        div[data-baseweb="select"] > div {
-            background-color: #1e293b !important;
-            background: #1e293b !important;
-            border: 1px solid #334155 !important;
-            border-radius: 10px !important;
-        }
-        div[data-testid="stSelectbox"] [data-baseweb="select"] *,
-        div[data-testid="stSelectbox"] div[role="combobox"] *,
-        div[data-baseweb="select"] *,
-        div[data-baseweb="select"] span,
-        div[data-baseweb="select"] p,
-        div[data-baseweb="select"] div,
-        div[data-baseweb="select"] input {
-            color: #ffffff !important;
-            -webkit-text-fill-color: #ffffff !important;
-            fill: #ffffff !important;
-            font-weight: 600 !important;
-        }
-        div[data-testid="stSelectbox"] label,
-        div[data-testid="stSelectbox"] label * {
-            color: #94a3b8 !important;
-            -webkit-text-fill-color: #94a3b8 !important;
-        }
-        div[data-baseweb="popover"] ul {
-            background-color: #0f172a !important;
-        }
-        div[data-baseweb="popover"] li, div[data-baseweb="popover"] li * {
-            color: #f8fafc !important;
-            -webkit-text-fill-color: #f8fafc !important;
-            background-color: transparent !important;
         }
         
         /* Hero Header Banner */
@@ -395,73 +351,32 @@ if is_dark_mode:
             color: #f8fafc !important;
         }
         
-        /* Global Code Tag High Contrast Fix for Dark Mode */
-        code, 
-        .stMarkdown code, 
-        div[data-testid="stChatMessage"] code, 
-        details[data-testid="stExpander"] code, 
-        div[data-testid="stStatusWidget"] code {
-            background-color: #1e293b !important;
-            color: #38bdf8 !important;
-            border: 1px solid #334155 !important;
-            padding: 2px 6px !important;
-            border-radius: 4px !important;
-            font-family: monospace !important;
-        }
-        
-        /* Status Widget & Expander Dark Mode Fix (Prevents White Bar on Hover/Open) */
+        /* Status Widget / Expander Dark Mode Fix */
         div[data-testid="stStatusWidget"], details[data-testid="stExpander"], div[data-testid="stExpander"] {
-            background-color: #0d1527 !important;
+            background-color: #0b1329 !important;
             border: 1px solid #1e293b !important;
             border-radius: 10px !important;
             color: #f8fafc !important;
             margin-bottom: 12px !important;
-            overflow: hidden !important;
         }
         div[data-testid="stStatusWidget"] *, details[data-testid="stExpander"] * {
-            color: #e2e8f0 !important;
+            color: #cbd5e1 !important;
         }
-        div[data-testid="stStatusWidget"] summary, 
-        details[data-testid="stExpander"] summary, 
-        div[data-testid="stExpander"] summary {
+        div[data-testid="stStatusWidget"] summary, details[data-testid="stExpander"] summary {
             background-color: #0f172a !important;
             color: #38bdf8 !important;
             font-weight: 700 !important;
             border-radius: 8px !important;
-            border: none !important;
-            padding: 10px 14px !important;
         }
-        div[data-testid="stStatusWidget"] summary:hover, 
-        details[data-testid="stExpander"] summary:hover, 
-        details[data-testid="stExpander"][open] summary,
-        div[data-testid="stExpander"] summary:hover,
-        div[data-testid="stExpander"] summary:focus,
-        div[data-testid="stExpander"] summary:active {
+        div[data-testid="stStatusWidget"] summary * {
+            color: #38bdf8 !important;
+        }
+        div[data-testid="stStatusWidget"] code, details[data-testid="stExpander"] code {
             background-color: #1e293b !important;
-            color: #38bdf8 !important;
-            border: none !important;
-        }
-        div[data-testid="stStatusWidget"] summary *, 
-        details[data-testid="stExpander"] summary *,
-        div[data-testid="stExpander"] summary * {
-            color: #38bdf8 !important;
-        }
-        details[data-testid="stExpander"] summary:hover *,
-        details[data-testid="stExpander"][open] summary * {
-            color: #38bdf8 !important;
-        }
-        
-        /* Expander Inner Content Region Dark Mode Fix (Prevents White Bar when Opened) */
-        details[data-testid="stExpander"] > div[role="region"],
-        div[data-testid="stExpander"] > div[role="region"],
-        div[data-testid="stExpanderDetails"],
-        div[data-testid="stExpanderDetails"] * {
-            background-color: #0d1527 !important;
-            color: #f8fafc !important;
-        }
-        div[data-testid="stExpanderDetails"] {
-            padding: 12px 16px !important;
-            border-top: 1px solid #1e293b !important;
+            color: #34d399 !important;
+            border: 1px solid #334155 !important;
+            padding: 2px 6px !important;
+            border-radius: 4px !important;
         }
         
         .qty-preview-badge {
@@ -491,42 +406,13 @@ else:
             max-width: 100% !important;
         }
 
-        /* Sidebar Styling */
-        section[data-testid="stSidebar"] {
-            background-color: #f8fafc !important;
-            border-right: 1px solid #e2e8f0 !important;
-        }
-        section[data-testid="stSidebar"] * {
-            color: #0f172a !important;
-        }
-        
-        /* Bulletproof High-Contrast Selectbox Styling for Light Mode */
-        div[data-testid="stSelectbox"] div[data-baseweb="select"],
-        div[data-testid="stSelectbox"] div[data-baseweb="select"] > div,
-        div[data-testid="stSelectbox"] div[role="combobox"],
-        div[data-baseweb="select"],
-        div[data-baseweb="select"] > div {
-            background-color: #ffffff !important;
-            background: #ffffff !important;
-            border: 1px solid #cbd5e1 !important;
-            border-radius: 10px !important;
-        }
-        div[data-testid="stSelectbox"] [data-baseweb="select"] *,
-        div[data-testid="stSelectbox"] div[role="combobox"] *,
-        div[data-baseweb="select"] *,
-        div[data-baseweb="select"] span,
-        div[data-baseweb="select"] p,
-        div[data-baseweb="select"] div,
-        div[data-baseweb="select"] input {
-            color: #0f172a !important;
-            -webkit-text-fill-color: #0f172a !important;
-            fill: #0f172a !important;
-            font-weight: 600 !important;
-        }
-        div[data-testid="stSelectbox"] label,
-        div[data-testid="stSelectbox"] label * {
-            color: #475569 !important;
-            -webkit-text-fill-color: #475569 !important;
+        /* Full Page Background */
+        .stApp {
+            background-color: #f5f7fa !important;
+            background-image: radial-gradient(#e2e8f0 1px, transparent 1px) !important;
+            background-size: 24px 24px !important;
+            color: #0f172a;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
         
         /* Global Typography */
@@ -818,7 +704,7 @@ with st.sidebar:
     
     # --- Database Maintenance ---
     st.markdown("#### Database Maintenance")
-    if st.button("⚠️ Reset POS Database", use_container_width=True, key="reset_db_sidebar"):
+    if st.button("⚠️ Reset POS & Store Database", use_container_width=True):
         init_database()
         st.session_state["chat_history"] = [
             {"role": "assistant", "content": "Database reset! Ready for fresh demo."}
@@ -845,23 +731,12 @@ def get_inventory_table():
     )
     return df
 
-# 3 Minimalist Tabs with Right Corner Reset POS Database Button
-tab_row_left, tab_row_right = st.columns([3.6, 1.0])
-with tab_row_left:
-    tab_warroom, tab_chat, tab_pos = st.tabs([
-        "🚀 Live Visual War Room",
-        "🤖 Multi-Agent Chat Terminal",
-        "📦 Live Store Inventory & POS"
-    ])
-with tab_row_right:
-    if st.button("⚠️ Reset POS Database", use_container_width=True, key="reset_db_tab_row_corner"):
-        init_database()
-        st.session_state["chat_history"] = [
-            {"role": "assistant", "content": "Database reset! Ready for fresh demo."}
-        ]
-        st.session_state["pending_approval"] = None
-        st.success("Database restored!")
-        st.rerun()
+# 3 Minimalist Tabs
+tab_warroom, tab_chat, tab_pos = st.tabs([
+    "🚀 Live Visual War Room",
+    "🤖 Multi-Agent Chat Terminal",
+    "📦 Live Store Inventory & POS"
+])
 
 # -------------------------------------------------------------
 # TAB 1: LIVE VISUAL WAR ROOM (STEP-BY-STEP VISUAL SIMULATION)
@@ -1041,29 +916,48 @@ with tab_warroom:
 # TAB 2: MULTI-AGENT CHAT TERMINAL (WITH HITL APPROVAL + DEMO AUTO-RUN)
 # -------------------------------------------------------------
 with tab_chat:
-    # Single Combined Agent Header Card (Title + Welcome + Status in 1 Card)
+    # Welcome Assistant Card Bubble
     st.markdown(f"""
-    <div style="display: flex; justify-content: space-between; align-items: center; background: {'#0d1527' if is_dark_mode else '#ffffff'}; border: 1px solid {'#1e293b' if is_dark_mode else '#cbd5e1'}; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; box-shadow: 0 4px 14px rgba(0,0,0,0.2);">
-        <div style="display: flex; align-items: center; gap: 14px;">
-            <img src="https://img.icons8.com/color/96/bot.png" width="44" style="filter: drop-shadow(0 2px 6px rgba(0,0,0,0.3)); flex-shrink: 0;" />
-            <div>
-                <div style="font-weight: 700; font-size: 1.08rem; color: {'#f8fafc' if is_dark_mode else '#0f172a'}; line-height: 1.2;">
-                    OptiVendor Store Manager Orchestrator
-                </div>
-                <div style="font-size: 0.88rem; color: {'#94a3b8' if is_dark_mode else '#475569'}; margin-top: 4px;">
-                    Hello! I am the Store Manager Orchestrator. How can I assist with store inventory, out-of-stock scans, or automated restock negotiations today?
-                </div>
-            </div>
-        </div>
-        <div style="{badge_style} font-size: 0.8rem; font-weight: 700; padding: 5px 14px; border-radius: 20px; display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
-            ● online
+    <div style="display: flex; align-items: flex-start; gap: 14px; background: {'#0f172a' if is_dark_mode else '#f0f9ff'}; border: 1px solid {'#1e293b' if is_dark_mode else '#e0f2fe'}; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+        <img src="https://img.icons8.com/color/96/bot.png" width="46" height="46" style="border-radius: 10px; background: #e0f2fe; padding: 4px; flex-shrink: 0;" />
+        <div>
+            <h4 style="margin: 0 0 4px 0; font-size: 1.02rem; font-weight: 700; color: {'#f8fafc' if is_dark_mode else '#0f172a'};">Hello! I'm the OptiVendor Store Manager Orchestrator.</h4>
+            <p style="margin: 0; font-size: 0.88rem; color: {'#94a3b8' if is_dark_mode else '#334155'};">I can help you with store inventory, out-of-stock scans, vendor negotiations, and automated procurement. Try one of the demo queries below or ask me anything.</p>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
+    # 5 Interactive Quick Action Cards Grid
+    st.markdown("<p style='font-size:0.85rem; font-weight:700; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;'>⚡ Quick Action Cards</p>", unsafe_allow_html=True)
+    c1, c2, c3, c4, c5 = st.columns(5)
+    with c1:
+        if st.button("🔍 Check my store inventory\nSee all products and risk status", use_container_width=True, key="quick_1"):
+            st.session_state["demo_query"] = "Check my store inventory"
+            st.rerun()
+    with c2:
+        if st.button("⚠️ Show out of stock items\nFind critical items (≤ 2 days)", use_container_width=True, key="quick_2"):
+            st.session_state["demo_query"] = "Check my store inventory and find which items are out of stock"
+            st.rerun()
+    with c3:
+        if st.button("📅 What's expiring soon?\nItems expiring in 7 days", use_container_width=True, key="quick_3"):
+            st.session_state["demo_query"] = "Which items are expiring soon?"
+            st.rerun()
+    with c4:
+        if st.button("🛒 Order 50 Oat Barista\nSmall order (auto-execute)", use_container_width=True, key="quick_4"):
+            st.session_state["demo_query"] = "Order 50 units of Oat Barista Blend"
+            st.rerun()
+    with c5:
+        if st.button("🛒 Order 500 Oat Barista\nLarge order (with approval)", use_container_width=True, key="quick_5"):
+            st.session_state["demo_query"] = "Order 500 units of Oat Barista Blend"
+            st.rerun()
+    
+    st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
+
     # Initialize session states
     if "chat_history" not in st.session_state:
-        st.session_state["chat_history"] = []
+        st.session_state["chat_history"] = [
+            {"role": "assistant", "content": "Hello! I am the **OptiVendor Store Manager Orchestrator**. How can I assist with store inventory, out-of-stock scans, or automated restock negotiations today?"}
+        ]
 
     if "pending_approval" not in st.session_state:
         st.session_state["pending_approval"] = None
@@ -1079,21 +973,18 @@ with tab_chat:
         avatar_icon = "https://img.icons8.com/color/96/bot.png" if msg["role"] == "assistant" else "👤"
         with st.chat_message(msg["role"], avatar=avatar_icon):
             if msg.get("trace_steps"):
-                with st.expander("✅ Multi-agent task completed", expanded=False):
+                with st.expander("🛠️ View Multi-Agent Execution Graph & Tool Traces (Open/Hide)", expanded=False):
                     for step in msg["trace_steps"]:
                         if "Orchestrator" in step:
-                            prefix = "🧠 **[Orchestrator Node]**"
+                            st.markdown(f"🧠 **[Node 1: Intent Orchestrator]** `{step}`")
                         elif "Shelf Monitor" in step:
-                            prefix = "📊 **[Shelf Monitor Agent]**"
+                            st.markdown(f"📊 **[Node 2: Shelf Monitor Agent]** `{step}`")
                         elif "A2A" in step or "RFQ" in step or "Negotiation" in step:
-                            prefix = "💬 **[A2A Negotiator]**"
+                            st.markdown(f"💬 **[Node 3: Autonomous A2A Negotiator]** `{step}`")
                         elif "Budget" in step or "Guard" in step or "Execution" in step:
-                            prefix = "🛡️ **[Safety Guardrails Engine]**"
+                            st.markdown(f"🛡️ **[Node 4: Safety Guardrails Engine]** `{step}`")
                         else:
-                            prefix = "⚙️ **[Graph Step]**"
-                        
-                        trace_color = "#f97316" if is_dark_mode else "#15803d"
-                        st.markdown(f"{prefix} <span style='color:{trace_color}; font-weight:600;'>{step}</span>", unsafe_allow_html=True)
+                            st.markdown(f"⚙️ **[Graph Step]** `{step}`")
             st.markdown(msg["content"])
 
     # --- HUMAN-IN-THE-LOOP APPROVAL UI ---
@@ -1244,18 +1135,15 @@ with tab_chat:
                 
                 for step in result.get("trace_steps", []):
                     if "Orchestrator" in step:
-                        prefix = "🧠 **[Node 1: Intent Orchestrator]**"
+                        status_box.write(f"🧠 **[Node 1: Intent Orchestrator]** {step}")
                     elif "Shelf Monitor" in step:
-                        prefix = "📊 **[Node 2: Shelf Monitor Agent]**"
+                        status_box.write(f"📊 **[Node 2: Shelf Monitor Agent]** {step}")
                     elif "A2A" in step or "RFQ" in step or "Negotiation" in step:
-                        prefix = "💬 **[Node 3: Autonomous A2A Negotiator]**"
+                        status_box.write(f"💬 **[Node 3: Autonomous A2A Negotiator]** {step}")
                     elif "Budget" in step or "Guard" in step or "Execution" in step:
-                        prefix = "🛡️ **[Node 4: Safety Guardrails Engine]**"
+                        status_box.write(f"🛡️ **[Node 4: Safety Guardrails Engine]** {step}")
                     else:
-                        prefix = "⚙️ **[Graph Execution Step]**"
-                    
-                    trace_color = "#f97316" if is_dark_mode else "#15803d"
-                    status_box.write(f"{prefix} <span style='color:{trace_color}; font-weight:600;'>{step}</span>", unsafe_allow_html=True)
+                        status_box.write(f"⚙️ **[Graph Execution Step]** {step}")
                     time.sleep(0.25)
                     
                 status_box.update(label="✅ **Multi-Agent Execution Pipeline Completed!**", state="complete", expanded=True)
@@ -1286,23 +1174,12 @@ with tab_chat:
 # TAB 3: LIVE STORE INVENTORY & POS
 # -------------------------------------------------------------
 with tab_pos:
-    pos_header_col1, pos_header_col2 = st.columns([3, 1])
-    with pos_header_col1:
-        st.markdown(f"""
-        <div class="optimizer-card" style="margin-bottom: 12px;">
-            <h4 style="margin-top:0; color:{'#f8fafc' if is_dark_mode else '#0f172a'}; font-weight:700;">📦 OptiVendor POS Database State (<code>optivendor_store.db</code>)</h4>
-            <p style="color:{'#94a3b8' if is_dark_mode else '#64748b'}; font-size:0.95rem; margin-bottom:0;">Live inventory levels, velocity, and Days of Supply computed from SQLite.</p>
-        </div>
-        """, unsafe_allow_html=True)
-    with pos_header_col2:
-        if st.button("⚠️ Reset POS Database", use_container_width=True, key="reset_db_tab3"):
-            init_database()
-            st.session_state["chat_history"] = [
-                {"role": "assistant", "content": "Database reset! Ready for fresh demo."}
-            ]
-            st.session_state["pending_approval"] = None
-            st.success("Database restored!")
-            st.rerun()
+    st.markdown("""
+    <div class="optimizer-card">
+        <h4 style="margin-top:0; color:#0f172a; font-weight:700;">📦 OptiVendor POS Database State (<code>optivendor_store.db</code>)</h4>
+        <p style="color:#64748b; font-size:0.95rem;">Live inventory levels, velocity, and Days of Supply computed from SQLite.</p>
+    </div>
+    """, unsafe_allow_html=True)
 
     df_inv = get_inventory_table()
     if not df_inv.empty:
