@@ -8,6 +8,7 @@ from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 
 from tools import query_inventory, fetch_vendors, send_a2a_rfq, execute_order
+from engine import check_approval_required, esc
 
 # Configure Trace Logging
 logging.basicConfig(
@@ -226,9 +227,9 @@ def execution_node(state: AgentState) -> Dict[str, Any]:
     original_value = round(raw_qty * unit_p, 2)
 
     # ============================================
-    # GUARD: BUDGET (checks ORIGINAL value)
+    # GUARD: BUDGET (checks ORIGINAL value via engine.py)
     # ============================================
-    if original_value > 500.0:
+    if check_approval_required(original_value, threshold=500.0):
         log_msg = f"🛑 [Budget Guard] Original order value ${original_value:.2f} ({raw_qty} units @ ${unit_p:.2f}) > $500. Human approval required."
         logging.warning(log_msg)
         return {

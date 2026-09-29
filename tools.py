@@ -1,6 +1,8 @@
 import sqlite3
 from typing import List, Dict, Any, Optional
 import datetime
+import uuid
+from engine import compute_health_status
 
 DB_PATH = "optivendor_store.db"
 
@@ -90,11 +92,10 @@ def query_inventory(filter_type: str = "OUT_OF_STOCK", product_name: Optional[st
             d = dict(r)
             velocity = d["sales_velocity_daily"]
             d["days_of_supply"] = round(d["stock_quantity"] / velocity, 1) if velocity > 0 else 999.0
-            d["status"] = "CRITICAL_STOCKOUT" if d["days_of_supply"] < 1.0 else ("LOW" if d["days_of_supply"] < 3.0 else "OPTIMAL")
+            d["status"] = compute_health_status(d["stock_quantity"], d["target_stock_level"], velocity)
             results.append(d)
 
     conn.close()
-    # CRITICAL FIX: Always return list of dicts or empty list []
     return results
 
 def fetch_vendors(category: Optional[str] = None, product_id: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -126,15 +127,6 @@ def fetch_vendors(category: Optional[str] = None, product_id: Optional[str] = No
 def send_a2a_rfq(vendor_endpoint: str, product_id: str, quantity: int, target_unit_price: float = 3.30) -> Dict[str, Any]:
     """
     Simulates an Autonomous A2A (Agent-to-Agent) Request For Quotation negotiation handshake.
-    
-    Args:
-        vendor_endpoint: Vendor HTTP endpoint (e.g., http://localhost:8001/a2a)
-        product_id: Target product SKU ID
-        quantity: Order units requested
-        target_unit_price: Opening buyer offer per unit
-        
-    Returns:
-        Negotiation handshake dictionary with status, negotiated_price, delivery_days, and cost_savings.
     """
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -148,7 +140,6 @@ def send_a2a_rfq(vendor_endpoint: str, product_id: str, quantity: int, target_un
     conn.close()
 
     if not res:
-        # Fallback vendor behavior
         return {
             "vendor_endpoint": vendor_endpoint,
             "status": "REJECTED",
@@ -166,7 +157,6 @@ def send_a2a_rfq(vendor_endpoint: str, product_id: str, quantity: int, target_un
         agreed_price = target_unit_price
         status = "ACCEPTED"
     else:
-        # Counter-offer
         counter = round(vendor_floor * 1.02, 2)
         agreed_price = counter
         status = "COUNTER_ACCEPTED"
@@ -190,7 +180,7 @@ def send_a2a_rfq(vendor_endpoint: str, product_id: str, quantity: int, target_un
 
 def execute_order(vendor_id: str, product_id: str, quantity: int, price: float) -> Dict[str, Any]:
     """
-    Executes PO and updates store inventory in SQLite with overstocking protection.
+    Executes PO, logs purchase order & audit trail, and updates store inventory in SQLite with overstocking protection.
     """
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -219,7 +209,29 @@ def execute_order(vendor_id: str, product_id: str, quantity: int, price: float) 
         actual_qty = max_allowed
         guard_msg = f"Overstocking blocked. Current stock: {cur_stock}, Target: {target_stock}. Maximum allowed order is {max_allowed} units. Order reduced from {quantity} to {max_allowed} units."
 
+    total_cost = round(actual_qty * price, 2)
+    now_str = datetime.datetime.now().isoformat()
+    po_id = f"PO-{uuid.uuid4().hex[:8].upper()}"
+
+    # 1. Update inventory
     cursor.execute("UPDATE inventory SET stock_quantity = stock_quantity + ? WHERE product_id = ?", (actual_qty, product_id))
+    
+    # 2. Insert into purchase_orders
+    cursor.execute("""
+        INSERT INTO purchase_orders (po_id, product_id, vendor_id, quantity, unit_price, total_cost, status, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (po_id, product_id, vendor_id, actual_qty, price, total_cost, "RECEIVED", now_str, now_str))
+
+    # 3. Insert into audit_log
+    audit_msg = f"Executed PO {po_id}: {actual_qty} units of {name} from {vendor_id} @ ${price:.2f}/unit (Total: ${total_cost:.2f})."
+    if guard_msg:
+        audit_msg += f" [{guard_msg}]"
+        
+    cursor.execute("""
+        INSERT INTO audit_log (timestamp, event_type, product_id, vendor_id, details)
+        VALUES (?, ?, ?, ?, ?)
+    """, (now_str, "ORDER_EXECUTED", product_id, vendor_id, audit_msg))
+
     conn.commit()
     
     cursor.execute("SELECT stock_quantity FROM inventory WHERE product_id = ?", (product_id,))
@@ -228,11 +240,12 @@ def execute_order(vendor_id: str, product_id: str, quantity: int, price: float) 
 
     return {
         "success": True,
+        "po_id": po_id,
         "product_id": product_id,
         "product_name": name,
         "ordered_quantity": actual_qty,
         "unit_price": price,
-        "total_value": round(actual_qty * price, 2),
+        "total_value": total_cost,
         "previous_stock": cur_stock,
         "target_stock": target_stock,
         "updated_stock": new_stock,

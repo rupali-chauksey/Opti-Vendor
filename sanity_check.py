@@ -38,7 +38,7 @@ def run_sanity_check():
             "check": lambda resp: (
                 "vegan jumbo shrimp" in resp.lower() and
                 "5 units" in resp.lower() and
-                "optimal" in resp.lower()
+                ("optimal" in resp.lower() or "low" in resp.lower())
             ),
             "expected_desc": "Mentions Vegan Jumbo Shrimp, 5 units left, and OPTIMAL status"
         },

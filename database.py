@@ -25,6 +25,7 @@ def init_database(db_path: str = DB_PATH):
     cursor.execute("DROP TABLE IF EXISTS vendors")
     cursor.execute("DROP TABLE IF EXISTS vendor_offers")
     cursor.execute("DROP TABLE IF EXISTS purchase_orders")
+    cursor.execute("DROP TABLE IF EXISTS audit_log")
 
     # 1. Create Table: inventory with expiration_date
     cursor.execute("""
@@ -62,6 +63,35 @@ def init_database(db_path: str = DB_PATH):
         batch_expiry_date TEXT NOT NULL,
         FOREIGN KEY (vendor_id) REFERENCES vendors (vendor_id),
         FOREIGN KEY (product_id) REFERENCES inventory (product_id)
+    )
+    """)
+
+    # 4. Create Table: purchase_orders (PO Lifecycle Tracking)
+    cursor.execute("""
+    CREATE TABLE purchase_orders (
+        po_id TEXT PRIMARY KEY,
+        product_id TEXT NOT NULL,
+        vendor_id TEXT NOT NULL,
+        quantity INTEGER NOT NULL,
+        unit_price REAL NOT NULL,
+        total_cost REAL NOT NULL,
+        status TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (vendor_id) REFERENCES vendors (vendor_id),
+        FOREIGN KEY (product_id) REFERENCES inventory (product_id)
+    )
+    """)
+
+    # 5. Create Table: audit_log (Audit Trail)
+    cursor.execute("""
+    CREATE TABLE audit_log (
+        log_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestamp TEXT NOT NULL,
+        event_type TEXT NOT NULL,
+        product_id TEXT,
+        vendor_id TEXT,
+        details TEXT NOT NULL
     )
     """)
 

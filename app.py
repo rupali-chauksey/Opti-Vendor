@@ -14,6 +14,7 @@ if hasattr(sys.stdout, 'reconfigure'):
 from database import init_database
 from tools import query_inventory, fetch_vendors, send_a2a_rfq, execute_order
 from agents import optivendor_pipeline
+from engine import esc, compute_health_status, compute_reorder_qty, check_approval_required, get_product_policy
 
 # Auto-initialize SQLite database on Cloud Deployment if missing
 try:
@@ -726,8 +727,12 @@ def get_inventory_table():
     df = pd.read_sql_query("SELECT product_id, name, category, stock_quantity, sales_velocity_daily, target_stock_level, vendor_id FROM inventory", conn)
     conn.close()
     df["Days of Supply"] = (df["stock_quantity"] / df["sales_velocity_daily"]).round(1)
-    df["Health Status"] = df["Days of Supply"].apply(
-        lambda x: "🚨 CRITICAL STOCKOUT" if x < 1.0 else ("⚠️ LOW STOCK" if x < 3.0 else "✅ OPTIMAL")
+    df["Health Status"] = df.apply(
+        lambda r: compute_health_status(r["stock_quantity"], r["target_stock_level"], r["sales_velocity_daily"]),
+        axis=1
+    )
+    df["Health Status"] = df["Health Status"].apply(
+        lambda s: "🚨 CRITICAL STOCKOUT" if s == "CRITICAL_STOCKOUT" else ("⚠️ LOW STOCK" if s == "LOW_STOCK" else "✅ OPTIMAL")
     )
     return df
 
@@ -774,7 +779,21 @@ with tab_warroom:
         velocity = row[2] if row else 15.0
         target_lvl = row[3] if row else 100
         days_left = round(cur_stock / velocity, 1) if velocity > 0 else 999.0
+        health_code = compute_health_status(cur_stock, target_lvl, velocity)
         
+        if health_code == "CRITICAL_STOCKOUT":
+            status_badge = "🚨 CRITICAL STOCKOUT"
+            alert_class = "sub-metric-badge-crit"
+            banner_html = f'<div class="alert-banner-low">🚨 <b>Alert commanded by Shelf Monitor:</b> Critical Stockout risk detected for <code>{target_prod}</code> ({days_left} days supply remaining). Reorder required.</div>'
+        elif health_code == "LOW_STOCK":
+            status_badge = "⚠️ LOW STOCK"
+            alert_class = "sub-metric-badge-low"
+            banner_html = f'<div class="alert-banner-low" style="background:#fff7ed; border-color:#fed7aa; border-left-color:#f97316; color:#9a3412;">⚠️ <b>Alert commanded by Shelf Monitor:</b> Stock below safety threshold for <code>{target_prod}</code> ({days_left} days supply remaining). Reorder recommended.</div>'
+        else:
+            status_badge = "✅ OPTIMAL"
+            alert_class = ""
+            banner_html = f'<div class="alert-banner-low" style="background:#f0fdf4; border-color:#bbf7d0; border-left-color:#16a34a; color:#14532d;">✅ <b>Shelf Monitor Scan:</b> Stock level is healthy for <code>{target_prod}</code> ({cur_stock}/{target_lvl} units, {days_left} days supply).</div>'
+
         # Step 1: Shelf Monitor Card
         st.markdown(f"""
         <div class="optimizer-card">
@@ -798,9 +817,9 @@ with tab_warroom:
                 </div>
                 <div class="sub-metric-box">
                     <div class="sub-metric-label">Days of Supply</div>
-                    <div class="sub-metric-val" style="color: {'#dc2626' if days_left < 1.0 else ('#d97706' if days_left < 3.0 else '#16a34a')};">{days_left}</div>
-                    <div class="{ 'sub-metric-badge-crit' if days_left < 1.0 else ('sub-metric-badge-low' if days_left < 3.0 else '')}">
-                        {'🚨 CRITICAL' if days_left < 1.0 else ('⚠️ LOW' if days_left < 3.0 else '✅ OPTIMAL')}
+                    <div class="sub-metric-val" style="color: {'#dc2626' if health_code == 'CRITICAL_STOCKOUT' else ('#d97706' if health_code == 'LOW_STOCK' else '#16a34a')};">{days_left}</div>
+                    <div class="{alert_class}">
+                        {status_badge}
                     </div>
                 </div>
                 <div class="sub-metric-box">
@@ -809,9 +828,7 @@ with tab_warroom:
                     <div class="sub-metric-unit">units</div>
                 </div>
             </div>
-            <div class="alert-banner-low">
-                ⚠️ <b>Alert commanded by Shelf Monitor:</b> Stock level critically low for <code>{target_prod}</code> ({days_left} days remaining). Automated reorder sequence initiated for {order_qty} units.
-            </div>
+            {banner_html}
         </div>
         """, unsafe_allow_html=True)
         
@@ -879,37 +896,54 @@ with tab_warroom:
             </div>
             """, unsafe_allow_html=True)
             
-            # Step 5: Execute Order & POS Update
-            exec_res = execute_order(top_v.get("vendor_id", "V-EARTH"), pid, order_qty, rfq_res["negotiated_price"])
-            
-            st.markdown(f"""
-            <div class="optimizer-card">
-                <div class="step-header">
-                    <div class="step-badge" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">5</div>
-                    <div>
-                        <span class="step-title-text">Atomic POS Store Execution</span>
-                        <span class="step-subtitle-text">(SQLite Database State Update & Audit)</span>
+            # Step 5: Execute Order & POS Update (with Budget Guard Enforcement)
+            po_total = rfq_res["total_cost"]
+            if check_approval_required(po_total):
+                st.markdown(f"""
+                <div class="optimizer-card" style="border-left: 5px solid #f59e0b;">
+                    <div class="step-header">
+                        <div class="step-badge" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">5</div>
+                        <div>
+                            <span class="step-title-text">🛑 Human Approval Required</span>
+                            <span class="step-subtitle-text">(Order Total ${po_total:.2f} Exceeds $500 Autonomous Threshold)</span>
+                        </div>
+                    </div>
+                    <p style="font-size:0.9rem; color:{'#94a3b8' if is_dark_mode else '#64748b'};">
+                        Order total of <b>${po_total:.2f}</b> ({order_qty} units @ ${rfq_res['negotiated_price']:.2f}/unit) requires manager approval. Please review and approve in Tab 2 (Chat Terminal).
+                    </p>
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                exec_res = execute_order(top_v.get("vendor_id", "V-EARTH"), pid, order_qty, rfq_res["negotiated_price"])
+                
+                st.markdown(f"""
+                <div class="optimizer-card">
+                    <div class="step-header">
+                        <div class="step-badge" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">5</div>
+                        <div>
+                            <span class="step-title-text">Atomic POS Store Execution</span>
+                            <span class="step-subtitle-text">(SQLite Database State Update & Audit Logged)</span>
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+                        <div class="sub-metric-box">
+                            <div class="sub-metric-label">Previous Stock</div>
+                            <div class="sub-metric-val">{exec_res.get('previous_stock', cur_stock)}</div>
+                            <div class="sub-metric-unit">units</div>
+                        </div>
+                        <div class="sub-metric-box">
+                            <div class="sub-metric-label">Inbound Replenishment</div>
+                            <div class="sub-metric-val" style="color: #2563eb;">+{exec_res.get('ordered_quantity', order_qty)}</div>
+                            <div class="sub-metric-unit">units</div>
+                        </div>
+                        <div class="sub-metric-box">
+                            <div class="sub-metric-label">Updated POS Inventory</div>
+                            <div class="sub-metric-val" style="color: #16a34a;">{exec_res.get('updated_stock', cur_stock + order_qty)}</div>
+                            <div class="sub-metric-unit">✅ OPTIMAL HEALTH</div>
+                        </div>
                     </div>
                 </div>
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
-                    <div class="sub-metric-box">
-                        <div class="sub-metric-label">Previous Stock</div>
-                        <div class="sub-metric-val">{exec_res.get('previous_stock', cur_stock)}</div>
-                        <div class="sub-metric-unit">units</div>
-                    </div>
-                    <div class="sub-metric-box">
-                        <div class="sub-metric-label">Inbound Replenishment</div>
-                        <div class="sub-metric-val" style="color: #2563eb;">+{exec_res.get('ordered_quantity', order_qty)}</div>
-                        <div class="sub-metric-unit">units</div>
-                    </div>
-                    <div class="sub-metric-box">
-                        <div class="sub-metric-label">Updated POS Inventory</div>
-                        <div class="sub-metric-val" style="color: #16a34a;">{exec_res.get('updated_stock', cur_stock + order_qty)}</div>
-                        <div class="sub-metric-unit">✅ OPTIMAL HEALTH</div>
-                    </div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
             
            
 # -------------------------------------------------------------
@@ -1191,3 +1225,34 @@ with tab_pos:
             use_container_width=True,
             hide_index=True
         )
+
+    st.markdown("<div style='margin-top: 24px;'></div>", unsafe_allow_html=True)
+    st.markdown(f"""
+    <div class="optimizer-card">
+        <h4 style="margin-top:0; color:{'#f8fafc' if is_dark_mode else '#0f172a'}; font-weight:700;">📜 Purchase Orders Lifecycle & Audit Log (<code>purchase_orders</code> & <code>audit_log</code>)</h4>
+        <p style="font-size:0.9rem; color:{'#94a3b8' if is_dark_mode else '#64748b'};">Full audit history of executed purchase orders, manager approvals, and guardrail interventions.</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    conn = sqlite3.connect("optivendor_store.db")
+    try:
+        df_po = pd.read_sql_query("SELECT po_id, product_id, vendor_id, quantity, unit_price, total_cost, status, created_at FROM purchase_orders ORDER BY created_at DESC", conn)
+        df_audit = pd.read_sql_query("SELECT log_id, timestamp, event_type, product_id, vendor_id, details FROM audit_log ORDER BY timestamp DESC", conn)
+    except Exception:
+        df_po = pd.DataFrame()
+        df_audit = pd.DataFrame()
+    conn.close()
+
+    col_po, col_log = st.columns(2)
+    with col_po:
+        st.markdown("**📋 Purchase Orders Lifecycle**")
+        if not df_po.empty:
+            st.dataframe(df_po, use_container_width=True, hide_index=True)
+        else:
+            st.info("No purchase orders executed yet. Run an order query in Chat or War Room!")
+    with col_log:
+        st.markdown("**🛡️ System Audit Trail**")
+        if not df_audit.empty:
+            st.dataframe(df_audit, use_container_width=True, hide_index=True)
+        else:
+            st.info("Audit log initialized. System actions will be logged here.")
