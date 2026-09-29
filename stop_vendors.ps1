@@ -1,5 +1,5 @@
 # PowerShell script to stop vendor agents running on ports 8001-8011
-Write-Host "🧹 Stopping VeganFlow Vendor Agents..." -ForegroundColor Yellow
+Write-Host "🧹 Stopping OptiVendor Vendor Agents..." -ForegroundColor Yellow
 
 $ports = 8001..8011
 foreach ($port in $ports) {

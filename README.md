@@ -210,7 +210,7 @@ flowchart TD
     Execution -->|Writes| DB
     Execution -->|Approve/Reject| HITL
     
-    DB[(💾 SQLite Database<br/>veganflow_store.db<br/>Products, Vendors, Orders)]
+    DB[(💾 SQLite Database<br/>optivendor_store.db<br/>Products, Vendors, Orders)]
     
     HITL{{👤 Human-in-the-Loop<br/>Approve / Reject<br/>Budget > $500}}
     
@@ -441,7 +441,7 @@ optivendor/
 ├── README.md                   # You are here
 ├── agent_trace.log             # Auto-generated logs
 ├── approval_log.txt            # Approval audit trail
-├── veganflow_store.db          # SQLite database
+├── optivendor_store.db          # SQLite database
 └── screenshots/                # 9 test screenshots
 ```
 

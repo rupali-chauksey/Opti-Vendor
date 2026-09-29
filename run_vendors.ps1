@@ -3,7 +3,7 @@ $env:PYTHONIOENCODING = "utf-8"
 $PSScriptRootLocal = Split-Path -Parent $MyInvocation.MyCommand.Path
 if (-not $PSScriptRootLocal) { $PSScriptRootLocal = Get-Location }
 
-Write-Host "🌱 Spawning the VeganFlow Vendor Ecosystem on Windows..." -ForegroundColor Green
+Write-Host "🌱 Spawning the OptiVendor Vendor Ecosystem on Windows..." -ForegroundColor Green
 Write-Host "---------------------------------------------------"
 
 $vendors = @(
@@ -21,7 +21,7 @@ $vendors = @(
 )
 
 foreach ($v in $vendors) {
-    Start-Process python -ArgumentList "veganflow_ai/external_vendor/vendor_agent.py --name `"$($v.Name)`" --port $($v.Port) --reliability $($v.Reliability)" -WorkingDirectory $PSScriptRootLocal -WindowStyle Hidden
+    Start-Process python -ArgumentList "optivendor_ai/external_vendor/vendor_agent.py --name `"$($v.Name)`" --port $($v.Port) --reliability $($v.Reliability)" -WorkingDirectory $PSScriptRootLocal -WindowStyle Hidden
     Write-Host "  Started $($v.Name) on port $($v.Port)" -ForegroundColor Cyan
 }
 

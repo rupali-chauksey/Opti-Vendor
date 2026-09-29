@@ -372,7 +372,7 @@ def route_after_negotiation(state: AgentState) -> str:
 
 # --- 4. Build StateGraph ---
 
-def build_veganflow_agent_graph():
+def build_optivendor_agent_graph():
     builder = StateGraph(AgentState)
 
     builder.add_node("orchestrator_node", orchestrator_node)
@@ -411,4 +411,6 @@ def build_veganflow_agent_graph():
     return builder.compile(checkpointer=memory)
 
 
-veganflow_pipeline = build_veganflow_agent_graph()
+build_veganflow_agent_graph = build_optivendor_agent_graph
+optivendor_pipeline = build_optivendor_agent_graph()
+veganflow_pipeline = optivendor_pipeline

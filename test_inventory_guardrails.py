@@ -10,7 +10,7 @@ if hasattr(sys.stdout, 'reconfigure'):
 
 from database import init_database
 from tools import query_inventory, execute_order, send_a2a_rfq
-from agents import veganflow_pipeline
+from agents import optivendor_pipeline
 
 def test_inventory_query_guardrails():
     print("=" * 70)
@@ -103,7 +103,7 @@ def test_langgraph_pipeline_guardrails():
         "final_response": "",
         "trace_steps": []
     }
-    res_budget = veganflow_pipeline.invoke(state_budget, config={"configurable": {"thread_id": "test_budget_guard"}})
+    res_budget = optivendor_pipeline.invoke(state_budget, config={"configurable": {"thread_id": "test_budget_guard"}})
     print("🔹 Test Budget Guard (> $500 PO):")
     print(f"   Human Approval Needed: {res_budget.get('human_approval_needed')}")
     print(f"   Response Preview: {res_budget.get('final_response')[:120]}...")
@@ -129,7 +129,7 @@ def test_langgraph_pipeline_guardrails():
         "final_response": "",
         "trace_steps": []
     }
-    res_product = veganflow_pipeline.invoke(state_product, config={"configurable": {"thread_id": "test_product_guard"}})
+    res_product = optivendor_pipeline.invoke(state_product, config={"configurable": {"thread_id": "test_product_guard"}})
     print("🔹 Test Specific Product Query:")
     print(f"   Response: {res_product.get('final_response')}")
     assert "Vegan Jumbo Shrimp" in res_product.get("final_response")

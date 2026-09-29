@@ -11,11 +11,11 @@ if hasattr(sys.stdout, 'reconfigure'):
 
 from database import init_database
 from tools import query_inventory, fetch_vendors, send_a2a_rfq, execute_order
-from agents import veganflow_pipeline
+from agents import optivendor_pipeline
 
 def run_evals():
     print("=" * 75)
-    print("🧪 VEGANFLOW MULTI-AGENT EVALUATION & BENCHMARK SUITE")
+    print("🧪 OPTIVENDOR MULTI-AGENT EVALUATION & BENCHMARK SUITE")
     print("=" * 75)
     
     # 1. Reset database to known baseline state
@@ -108,7 +108,7 @@ def run_evals():
         }
         
         config = {"configurable": {"thread_id": f"eval_{tc['id']}_{int(time.time())}"}}
-        result = veganflow_pipeline.invoke(init_state, config=config)
+        result = optivendor_pipeline.invoke(init_state, config=config)
         
         is_passed = tc["validate"](result)
         if is_passed:

@@ -9,11 +9,11 @@ if hasattr(sys.stdout, 'reconfigure'):
         pass
 
 from database import init_database
-from agents import veganflow_pipeline
+from agents import optivendor_pipeline
 
 def run_sanity_check():
     print("=" * 75)
-    print("🔍 VEGANFLOW MULTI-AGENT SYSTEM: SANITY CHECK SUITE")
+    print("🔍 OptiVendor MULTI-AGENT SYSTEM: SANITY CHECK SUITE")
     print("=" * 75)
 
     # Initialize / reset DB
@@ -81,7 +81,7 @@ def run_sanity_check():
         }
         
         config = {"configurable": {"thread_id": f"sanity_{sc['id']}_{int(time.time())}"}}
-        res = veganflow_pipeline.invoke(state, config=config)
+        res = optivendor_pipeline.invoke(state, config=config)
         resp_text = res.get("final_response", "")
         
         passed = sc["check"](resp_text)

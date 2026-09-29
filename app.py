@@ -13,7 +13,7 @@ if hasattr(sys.stdout, 'reconfigure'):
 
 from database import init_database
 from tools import query_inventory, fetch_vendors, send_a2a_rfq, execute_order
-from agents import veganflow_pipeline
+from agents import optivendor_pipeline
 
 # Auto-initialize SQLite database on Cloud Deployment if missing
 try:
@@ -1131,7 +1131,7 @@ with tab_chat:
                 }
                 
                 config = {"configurable": {"thread_id": f"chat_{int(time.time())}"}}
-                result = veganflow_pipeline.invoke(init_state, config=config)
+                result = optivendor_pipeline.invoke(init_state, config=config)
                 
                 for step in result.get("trace_steps", []):
                     if "Orchestrator" in step:
