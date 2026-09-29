@@ -2,7 +2,7 @@ import sqlite3
 from typing import List, Dict, Any, Optional
 import datetime
 import uuid
-from engine import compute_health_status, score_vendor_candidate, get_product_policy
+from engine import compute_health_status
 
 DB_PATH = "optivendor_store.db"
 
@@ -100,53 +100,29 @@ def query_inventory(filter_type: str = "OUT_OF_STOCK", product_name: Optional[st
 
 def fetch_vendors(category: Optional[str] = None, product_id: Optional[str] = None) -> List[Dict[str, Any]]:
     """
-    Fetches competing vendors from database, scored transparently by composite vendor score.
+    Fetches competing vendors from database, optionally filtered by category or product.
     """
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
     if product_id:
-        policy = get_product_policy(product_id)
-        max_p = policy.get("max_unit_price")
         cursor.execute("""
             SELECT v.vendor_id, v.name, v.category, v.reliability_score, v.endpoint_url,
                    vo.price_wholesale, vo.delivery_days, vo.product_id
             FROM vendors v
             JOIN vendor_offers vo ON v.vendor_id = vo.vendor_id
             WHERE vo.product_id = ?
+            ORDER BY vo.price_wholesale ASC
         """, (product_id,))
-        rows = cursor.fetchall()
-        conn.close()
-        
-        scored = []
-        for r in rows:
-            d = dict(r)
-            list_p = d["price_wholesale"]
-            score, status, breakdown = score_vendor_candidate(
-                price=list_p,
-                list_price=list_p,
-                reliability=d["reliability_score"],
-                delivery_days=d["delivery_days"],
-                max_unit_price=max_p
-            )
-            d["total_score"] = score
-            d["selection_status"] = status
-            d["score_breakdown"] = breakdown
-            scored.append(d)
-            
-        scored.sort(key=lambda x: x["total_score"], reverse=True)
-        return scored
     elif category:
         cursor.execute("SELECT * FROM vendors WHERE category LIKE ? ORDER BY reliability_score DESC", (f"%{category}%",))
-        rows = cursor.fetchall()
-        conn.close()
-        return [dict(r) for r in rows]
     else:
         cursor.execute("SELECT * FROM vendors ORDER BY reliability_score DESC")
-        rows = cursor.fetchall()
-        conn.close()
-        return [dict(r) for r in rows]
+
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
 
 def send_a2a_rfq(vendor_endpoint: str, product_id: str, quantity: int, target_unit_price: float = 3.30) -> Dict[str, Any]:
     """
@@ -174,16 +150,16 @@ def send_a2a_rfq(vendor_endpoint: str, product_id: str, quantity: int, target_un
 
     v_name, reliability, list_price, base_delivery = res
 
-    # Exact bulk discount rules: >= 100 units -> 10% discount, >= 50 units -> 5% discount
-    if quantity >= 100:
-        disc_rate = 0.10
-    elif quantity >= 50:
-        disc_rate = 0.05
+    # Vendor pricing logic based on volume and reliability
+    vendor_floor = round(list_price * reliability * (0.95 if quantity >= 50 else 1.0), 2)
+    
+    if target_unit_price >= vendor_floor:
+        agreed_price = target_unit_price
+        status = "ACCEPTED"
     else:
-        disc_rate = 0.00
-
-    agreed_price = round(list_price * (1.0 - disc_rate), 2)
-    status = "ACCEPTED" if target_unit_price >= agreed_price else "COUNTER_ACCEPTED"
+        counter = round(vendor_floor * 1.02, 2)
+        agreed_price = counter
+        status = "COUNTER_ACCEPTED"
 
     total_cost = round(agreed_price * quantity, 2)
     standard_cost = round(list_price * quantity, 2)
@@ -208,6 +184,31 @@ def execute_order(vendor_id: str, product_id: str, quantity: int, price: float) 
     """
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
+    
+    # Ensure tables exist
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS purchase_orders (
+            po_id TEXT PRIMARY KEY,
+            product_id TEXT NOT NULL,
+            vendor_id TEXT NOT NULL,
+            quantity INTEGER NOT NULL,
+            unit_price REAL NOT NULL,
+            total_cost REAL NOT NULL,
+            status TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS audit_log (
+            log_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT NOT NULL,
+            event_type TEXT NOT NULL,
+            product_id TEXT,
+            vendor_id TEXT,
+            details TEXT NOT NULL
+        )
+    """)
     
     cursor.execute("SELECT name, stock_quantity, target_stock_level FROM inventory WHERE product_id = ?", (product_id,))
     row = cursor.fetchone()
@@ -236,31 +237,6 @@ def execute_order(vendor_id: str, product_id: str, quantity: int, price: float) 
     total_cost = round(actual_qty * price, 2)
     now_str = datetime.datetime.now().isoformat()
     po_id = f"PO-{uuid.uuid4().hex[:8].upper()}"
-
-    # Ensure tables exist
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS purchase_orders (
-            po_id TEXT PRIMARY KEY,
-            product_id TEXT NOT NULL,
-            vendor_id TEXT NOT NULL,
-            quantity INTEGER NOT NULL,
-            unit_price REAL NOT NULL,
-            total_cost REAL NOT NULL,
-            status TEXT NOT NULL,
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
-        )
-    """)
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS audit_log (
-            log_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            timestamp TEXT NOT NULL,
-            event_type TEXT NOT NULL,
-            product_id TEXT,
-            vendor_id TEXT,
-            details TEXT NOT NULL
-        )
-    """)
 
     # 1. Update inventory
     cursor.execute("UPDATE inventory SET stock_quantity = stock_quantity + ? WHERE product_id = ?", (actual_qty, product_id))

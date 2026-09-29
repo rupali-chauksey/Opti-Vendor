@@ -16,11 +16,11 @@ from tools import query_inventory, fetch_vendors, send_a2a_rfq, execute_order
 from agents import optivendor_pipeline
 from engine import esc, compute_health_status, compute_reorder_qty, check_approval_required, get_product_policy
 
-# Auto-initialize SQLite database on Cloud Deployment if missing
+# Auto-initialize SQLite database if tables are missing
 try:
     conn = sqlite3.connect("optivendor_store.db")
     cur = conn.cursor()
-    cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='inventory'")
+    cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='purchase_orders'")
     has_table = cur.fetchone()
     conn.close()
     if not has_table:
@@ -780,29 +780,19 @@ with tab_warroom:
         target_lvl = row[3] if row else 100
         days_left = round(cur_stock / velocity, 1) if velocity > 0 else 999.0
         health_code = compute_health_status(cur_stock, target_lvl, velocity)
-        sys_rec_qty = compute_reorder_qty(cur_stock, target_lvl, velocity)
-        max_cap = max(0, target_lvl - cur_stock)
         
         if health_code == "CRITICAL_STOCKOUT":
             status_badge = "🚨 CRITICAL STOCKOUT"
             alert_class = "sub-metric-badge-crit"
-            banner_html = esc(f'<div class="alert-banner-low">🚨 <b>Alert commanded by Shelf Monitor:</b> Critical Stockout risk detected for <code>{target_prod}</code> ({days_left} days supply remaining). System recommended reorder: <b>{sys_rec_qty} units</b>.</div>')
+            banner_html = f'<div class="alert-banner-low">🚨 <b>Alert commanded by Shelf Monitor:</b> Critical Stockout risk detected for <code>{target_prod}</code> ({days_left} days supply remaining). Reorder required.</div>'
         elif health_code == "LOW_STOCK":
             status_badge = "⚠️ LOW STOCK"
             alert_class = "sub-metric-badge-low"
-            banner_html = esc(f'<div class="alert-banner-low" style="background:#fff7ed; border-color:#fed7aa; border-left-color:#f97316; color:#9a3412;">⚠️ <b>Alert commanded by Shelf Monitor:</b> Stock below safety threshold for <code>{target_prod}</code> ({days_left} days supply remaining). System recommended reorder: <b>{sys_rec_qty} units</b>.</div>')
+            banner_html = f'<div class="alert-banner-low" style="background:#fff7ed; border-color:#fed7aa; border-left-color:#f97316; color:#9a3412;">⚠️ <b>Alert commanded by Shelf Monitor:</b> Stock below safety threshold for <code>{target_prod}</code> ({days_left} days supply remaining). Reorder recommended.</div>'
         else:
             status_badge = "✅ OPTIMAL"
             alert_class = ""
-            banner_html = esc(f'<div class="alert-banner-low" style="background:#f0fdf4; border-color:#bbf7d0; border-left-color:#16a34a; color:#14532d;">✅ <b>Shelf Monitor Scan:</b> Stock level is healthy for <code>{target_prod}</code> ({cur_stock}/{target_lvl} units, {days_left} days supply). No reorder needed.</div>')
-
-        with col_left:
-            st.markdown(f"""
-            <div style="background:{'#0f172a' if is_dark_mode else '#f8fafc'}; border:1px solid {'#1e293b' if is_dark_mode else '#e2e8f0'}; border-radius:10px; padding:12px; margin-bottom:14px;">
-                <span style="font-size:0.82rem; color:{'#94a3b8' if is_dark_mode else '#64748b'};">System Recommendation</span><br>
-                <b style="font-size:1.1rem; color:{'#38bdf8' if is_dark_mode else '#0284c7'};">{sys_rec_qty} units</b> <span style="font-size:0.78rem;">(Cap: {max_cap})</span>
-            </div>
-            """, unsafe_allow_html=True)
+            banner_html = f'<div class="alert-banner-low" style="background:#f0fdf4; border-color:#bbf7d0; border-left-color:#16a34a; color:#14532d;">✅ <b>Shelf Monitor Scan:</b> Stock level is healthy for <code>{target_prod}</code> ({cur_stock}/{target_lvl} units, {days_left} days supply).</div>'
 
         # Step 1: Shelf Monitor Card
         st.markdown(f"""
@@ -843,9 +833,8 @@ with tab_warroom:
         """, unsafe_allow_html=True)
         
         if btn_run_sim:
-            pol = get_product_policy(pid)
             # Step 2: Strategic Memory Policy
-            st.markdown(esc(f"""
+            st.markdown("""
             <div class="optimizer-card">
                 <div class="step-header">
                     <div class="step-badge" style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);">2</div>
@@ -855,13 +844,13 @@ with tab_warroom:
                     </div>
                 </div>
                 <div class="dialog-bubble-buyer">
-                    <b>🧠 Long-Term Strategy Memory Ingested for {pol['name']}:</b><br>
+                    <b>🧠 Long-Term Strategy Memory Ingested:</b><br>
                     • Target Wholesale Price: <b>$3.30 / unit</b><br>
-                    • Hard Policy Ceiling: <b>${pol.get('max_unit_price', 4.50):.2f} / unit</b> (Reject offers above ceiling)<br>
-                    • Bulk Quantity Tier: Orders ≥ 50 units unlock 5% volume discount, ≥ 100 units unlock 10% discount.
+                    • Hard Budget Ceiling: <b>$3.60 / unit</b> (Reject offers above this threshold)<br>
+                    • Bulk Quantity Rule: Orders ≥ 50 units unlock 5% volume supplier discount.
                 </div>
             </div>
-            """), unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
             
             # Step 3: Vendor Discovery
             vendors_list = fetch_vendors(product_id=pid)
@@ -870,26 +859,20 @@ with tab_warroom:
                 <div class="step-header">
                     <div class="step-badge" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);">3</div>
                     <div>
-                        <span class="step-title-text">Vendor Marketplace Discovery & Candidate Scoring</span>
-                        <span class="step-subtitle-text">({len(vendors_list)} Suppliers Ranked by Composite Score)</span>
+                        <span class="step-title-text">Vendor Marketplace Discovery</span>
+                        <span class="step-subtitle-text">({len(vendors_list)} Competing Suppliers Identified)</span>
                     </div>
                 </div>
             </div>
             """, unsafe_allow_html=True)
             if vendors_list:
-                df_v = pd.DataFrame(vendors_list)
-                show_cols = [c for c in ["name", "category", "price_wholesale", "reliability_score", "delivery_days", "total_score", "selection_status"] if c in df_v.columns]
-                st.dataframe(df_v[show_cols].rename(columns={
-                    "name": "Supplier", "category": "Category", "price_wholesale": "Wholesale Price",
-                    "reliability_score": "SLA Score", "delivery_days": "Delivery (Days)",
-                    "total_score": "Composite Score", "selection_status": "Status"
-                }), use_container_width=True)
+                st.dataframe(pd.DataFrame(vendors_list)[["name", "category", "reliability_score", "price_wholesale", "delivery_days"]], use_container_width=True)
             
             # Step 4: A2A Autonomous Negotiation
             top_v = vendors_list[0] if vendors_list else {"name": "Earthly Gourmet", "endpoint_url": "http://localhost:8001/a2a"}
             rfq_res = send_a2a_rfq(top_v["endpoint_url"], pid, order_qty, target_unit_price=3.30)
             
-            st.markdown(esc(f"""
+            st.markdown(f"""
             <div class="optimizer-card">
                 <div class="step-header">
                     <div class="step-badge" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">4</div>
@@ -904,19 +887,19 @@ with tab_warroom:
                 </div>
                 <div class="dialog-bubble-vendor">
                     <b>📥 [A2A Counter] {rfq_res['vendor_name']} Vendor Agent:</b><br>
-                    <i>"COUNTER-OFFER: List wholesale price is ${rfq_res['list_price']:.2f}. For volume of {order_qty} units, accepted price is <b>${rfq_res['negotiated_price']:.2f} / unit</b> with {rfq_res['delivery_days']}-day delivery."</i>
+                    <i>"COUNTER-OFFER: List price is ${rfq_res['list_price']:.2f}. For volume of {order_qty} units, accepted wholesale price is <b>${rfq_res['negotiated_price']:.2f} / unit</b> with {rfq_res['delivery_days']}-day delivery."</i>
                 </div>
                 <div class="dialog-bubble-success">
                     <b>🤝 [A2A Agreement Sealed] Procurement Agent ➔ {rfq_res['vendor_name']}:</b><br>
-                    <i>"PURCHASE CONFIRMED: {order_qty} units @ ${rfq_res['negotiated_price']:.2f}/unit. Total PO Value: <b>${rfq_res['total_cost']:.2f}</b> (Saved: <b>${rfq_res['cost_saved']:.2f}</b> below standard list price)."</i>
+                    <i>"PURCHASE CONFIRMED: {order_qty} units @ ${rfq_res['negotiated_price']:.2f}/unit. Total PO Value: <b>${rfq_res['total_cost']:.2f}</b> (Saved: <b>${rfq_res['cost_saved']:.2f}</b>)."</i>
                 </div>
             </div>
-            """), unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
             
             # Step 5: Execute Order & POS Update (with Budget Guard Enforcement)
             po_total = rfq_res["total_cost"]
             if check_approval_required(po_total):
-                st.markdown(esc(f"""
+                st.markdown(f"""
                 <div class="optimizer-card" style="border-left: 5px solid #f59e0b;">
                     <div class="step-header">
                         <div class="step-badge" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">5</div>
@@ -929,11 +912,11 @@ with tab_warroom:
                         Order total of <b>${po_total:.2f}</b> ({order_qty} units @ ${rfq_res['negotiated_price']:.2f}/unit) requires manager approval. Please review and approve in Tab 2 (Chat Terminal).
                     </p>
                 </div>
-                """), unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
             else:
                 exec_res = execute_order(top_v.get("vendor_id", "V-EARTH"), pid, order_qty, rfq_res["negotiated_price"])
                 
-                st.markdown(esc(f"""
+                st.markdown(f"""
                 <div class="optimizer-card">
                     <div class="step-header">
                         <div class="step-badge" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">5</div>
@@ -960,7 +943,7 @@ with tab_warroom:
                         </div>
                     </div>
                 </div>
-                """), unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
             
            
 # -------------------------------------------------------------

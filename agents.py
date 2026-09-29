@@ -347,7 +347,7 @@ def output_formatter_node(state: AgentState) -> Dict[str, Any]:
         final_text = "I have processed your store inventory request. All systems are operational."
 
     logging.info(f"📤 [Response Formatter] Formatted natural language response:\n{final_text}")
-    return {"final_response": esc(final_text)}
+    return {"final_response": final_text}
 
 
 # --- 3. Routing Conditional Edges ---
