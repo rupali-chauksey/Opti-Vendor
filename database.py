@@ -14,8 +14,8 @@ DB_PATH = "optivendor_store.db"
 def init_database(db_path: str = DB_PATH):
     """
     Initializes the SQLite database with schemas and dummy data
-    for 10 Vegan grocery products and 11 competing vendor microservices.
-    Includes explicit expiration_date column on inventory.
+    for 10 Vegan grocery products, 11 competing vendor microservices,
+    purchase orders lifecycle, system audit log, and stock movements ledger.
     """
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
@@ -25,8 +25,10 @@ def init_database(db_path: str = DB_PATH):
     cursor.execute("DROP TABLE IF EXISTS vendors")
     cursor.execute("DROP TABLE IF EXISTS vendor_offers")
     cursor.execute("DROP TABLE IF EXISTS purchase_orders")
+    cursor.execute("DROP TABLE IF EXISTS audit_log")
+    cursor.execute("DROP TABLE IF EXISTS stock_movements")
 
-    # 1. Create Table: inventory with expiration_date
+    # 1. Create Table: inventory
     cursor.execute("""
     CREATE TABLE inventory (
         product_id TEXT PRIMARY KEY,
@@ -51,7 +53,7 @@ def init_database(db_path: str = DB_PATH):
     )
     """)
 
-    # 3. Create Table: vendor_offers (competing price catalog)
+    # 3. Create Table: vendor_offers
     cursor.execute("""
     CREATE TABLE vendor_offers (
         offer_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -65,7 +67,55 @@ def init_database(db_path: str = DB_PATH):
     )
     """)
 
-    # 4. Insert 11 Vendor Records
+    # 4. Create Table: purchase_orders
+    cursor.execute("""
+    CREATE TABLE purchase_orders (
+        po_id TEXT PRIMARY KEY,
+        product_id TEXT NOT NULL,
+        vendor_id TEXT NOT NULL,
+        quantity INTEGER NOT NULL,
+        unit_price REAL NOT NULL,
+        total_cost REAL NOT NULL,
+        list_price REAL NOT NULL,
+        savings REAL NOT NULL,
+        status TEXT NOT NULL,
+        approved_by TEXT,
+        expected_delivery TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (vendor_id) REFERENCES vendors (vendor_id),
+        FOREIGN KEY (product_id) REFERENCES inventory (product_id)
+    )
+    """)
+
+    # 5. Create Table: audit_log
+    cursor.execute("""
+    CREATE TABLE audit_log (
+        log_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestamp TEXT NOT NULL,
+        event_type TEXT NOT NULL,
+        actor TEXT NOT NULL,
+        product_id TEXT,
+        vendor_id TEXT,
+        po_id TEXT,
+        details TEXT NOT NULL
+    )
+    """)
+
+    # 6. Create Table: stock_movements
+    cursor.execute("""
+    CREATE TABLE stock_movements (
+        movement_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestamp TEXT NOT NULL,
+        product_id TEXT NOT NULL,
+        change_qty INTEGER NOT NULL,
+        new_stock INTEGER NOT NULL,
+        reason TEXT NOT NULL,
+        po_id TEXT
+    )
+    """)
+
+    # 7. Insert 11 Vendor Records
     vendors_data = [
         ("V-EARTH", "Earthly Gourmet", "Dairy Alternative", 0.98, "http://localhost:8001/a2a"),
         ("V-CLARK", "Clark Distributing", "Dairy Alternative", 0.95, "http://localhost:8002/a2a"),
@@ -85,14 +135,9 @@ def init_database(db_path: str = DB_PATH):
     def get_date(days_offset):
         return (today + datetime.timedelta(days=days_offset)).isoformat()
 
-    # 5. Insert 10 Vegan Grocery Products with dynamic test expiration dates
-    # Notice:
-    # - Vanilla Coconut Yogurt expires in 1 day
-    # - Cultured Truffle Brie expires in 2 days
-    # - Artisanal Organic Tempeh expires in 3 days
-    # - Oat Barista Blend has Critical Stockout (0.8 days supply)
+    # 8. Insert 10 Vegan Grocery Products
     inventory_data = [
-        ("P-OAT1", "Oat Barista Blend", "Beverage", 12, 15.0, 100, "V-EARTH", get_date(45)),
+        ("P-OAT1", "Oat Barista Blend", "Beverage", 12, 15.0, 100, "V-CLARK", get_date(45)),
         ("P-ALMD", "Almond Milk Unsweetened", "Beverage", 45, 5.0, 60, "V-CLARK", get_date(30)),
         ("P-BRIE", "Cultured Truffle Brie", "Cheese Alternative", 8, 2.0, 30, "V-MIYOK", get_date(2)),
         ("P-CHED", "Aged Smoked Cheddar Block", "Cheese Alternative", 35, 4.0, 50, "V-TREEL", get_date(40)),
@@ -105,23 +150,18 @@ def init_database(db_path: str = DB_PATH):
     ]
     cursor.executemany("INSERT INTO inventory VALUES (?, ?, ?, ?, ?, ?, ?, ?)", inventory_data)
 
-    # 6. Insert Competing Vendor Offers
+    # 9. Insert Competing Vendor Offers
     offers_data = [
-        # Oat Barista Blend Offers
-        ("V-EARTH", "P-OAT1", 3.80, 2, get_date(60)),
         ("V-CLARK", "P-OAT1", 3.42, 2, get_date(65)),
         ("V-OATLY", "P-OAT1", 3.65, 1, get_date(70)),
+        ("V-EARTH", "P-OAT1", 3.80, 2, get_date(60)),
         ("V-LCG", "P-OAT1", 3.90, 4, get_date(50)),
-        # Cultured Truffle Brie Offers
         ("V-MIYOK", "P-BRIE", 9.80, 3, get_date(30)),
         ("V-TREEL", "P-BRIE", 9.20, 2, get_date(35)),
-        # Vegan Jumbo Shrimp Offers
         ("V-OCEAN", "P-SHMP", 13.50, 2, get_date(45)),
         ("V-UNFI", "P-SHMP", 14.20, 3, get_date(50)),
-        # Seitan Pepperoni Offers
         ("V-SEATN", "P-PEPR", 11.50, 2, get_date(40)),
         ("V-BEYND", "P-PEPR", 12.00, 3, get_date(45)),
-        # Other items
         ("V-CLARK", "P-ALMD", 2.80, 2, get_date(60)),
         ("V-TREEL", "P-CHED", 5.50, 3, get_date(60)),
         ("V-BEYND", "P-SAUS", 6.20, 2, get_date(50)),
@@ -131,9 +171,16 @@ def init_database(db_path: str = DB_PATH):
     ]
     cursor.executemany("INSERT INTO vendor_offers (vendor_id, product_id, price_wholesale, delivery_days, batch_expiry_date) VALUES (?, ?, ?, ?, ?)", offers_data)
 
+    # 10. Initial Baseline Audit Entry
+    now_str = datetime.datetime.now().isoformat()
+    cursor.execute("""
+        INSERT INTO audit_log (timestamp, event_type, actor, product_id, vendor_id, po_id, details)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (now_str, "SYSTEM_INIT", "SYSTEM", None, None, None, "Database reset to baseline demo state (10 products, 11 vendors)."))
+
     conn.commit()
     conn.close()
-    print(f"✅ SQLite Database '{db_path}' initialized with 10 products (with expiration_date) and 11 vendors.")
+    print(f"✅ SQLite Database '{db_path}' initialized with baseline schema & demo seed data.")
 
 if __name__ == "__main__":
     init_database()

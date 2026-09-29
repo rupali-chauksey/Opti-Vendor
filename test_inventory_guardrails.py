@@ -9,7 +9,7 @@ if hasattr(sys.stdout, 'reconfigure'):
         pass
 
 from database import init_database
-from tools import query_inventory, execute_order, send_a2a_rfq
+from tools import query_inventory, execute_order, send_a2a_rfq, receive_purchase_order
 from agents import optivendor_pipeline
 
 def test_inventory_query_guardrails():
@@ -17,7 +17,6 @@ def test_inventory_query_guardrails():
     print("🧪 1. INVENTORY TOOL & DETERMINISTIC QUERY GUARDRAILS TEST")
     print("=" * 70)
     
-    # Initialize baseline database
     init_database()
 
     # 1. Non-existent product query
@@ -55,22 +54,26 @@ def test_overstocking_and_execution_guardrails():
     print("🧪 2. OVERSTOCKING & EXECUTION GUARDRAIL TEST")
     print("=" * 70)
     
-    # Reset DB
     init_database()
 
     # Oat Barista Blend: Target = 100, Current = 12. Headroom = 88 units.
     # Case A: Requesting 150 units (exceeds headroom of 88)
-    order_a = execute_order(vendor_id="V-EARTH", product_id="P-OAT1", quantity=150, price=3.50)
+    order_a = execute_order(vendor_id="V-CLARK", product_id="P-OAT1", quantity=150, price=3.50)
     print(f"🔹 Overstock Attempt (Request 150 units when max allowed is 88):")
     print(f"   Output: {order_a}")
     assert order_a["success"] == True
     assert order_a["ordered_quantity"] == 88, f"Quantity should be capped at 88, got {order_a['ordered_quantity']}"
     assert "Overstocking blocked" in order_a["guard_warning"]
-    assert order_a["updated_stock"] == 100
-    print("   ✅ PASS: Order clamped to target capacity (88 units).\n")
+    assert order_a["status"] == "IN_TRANSIT"
+    print("   ✅ PASS: Order clamped to target capacity (88 units) & status set to IN_TRANSIT.\n")
+
+    # Receive PO to update stock
+    receive_res = receive_purchase_order(order_a["po_id"])
+    assert receive_res["success"] == True
+    assert receive_res["new_stock"] == 100
 
     # Case B: Stock is now 100 (at capacity). Attempting another order.
-    order_b = execute_order(vendor_id="V-EARTH", product_id="P-OAT1", quantity=20, price=3.50)
+    order_b = execute_order(vendor_id="V-CLARK", product_id="P-OAT1", quantity=20, price=3.50)
     print(f"🔹 Overstock Attempt (When stock is already 100/100):")
     print(f"   Output: {order_b}")
     assert order_b["success"] == False

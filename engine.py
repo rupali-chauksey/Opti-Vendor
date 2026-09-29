@@ -20,10 +20,10 @@ def esc(s: Any) -> str:
 # ============================================================================
 def compute_health_status(stock: float, target: float, velocity: float = 0.0, lead_time: float = 2.0, safety_days: float = 2.0) -> str:
     """
-    Computes deterministic inventory health status:
+    Computes deterministic inventory health status based on Days of Supply (DoS) and stock level %:
     - CRITICAL_STOCKOUT: stock <= 0 OR days_of_supply < lead_time
-    - LOW_STOCK: days_of_supply < (lead_time + safety_days) OR stock <= 0.5 * target
     - OVERSTOCKED: stock > target
+    - LOW_STOCK: days_of_supply < (lead_time + safety_days) OR stock <= 0.5 * target
     - OPTIMAL: stock level is healthy and well-supplied
     """
     if stock <= 0:
@@ -42,17 +42,19 @@ def compute_health_status(stock: float, target: float, velocity: float = 0.0, le
     return "OPTIMAL"
 
 # ============================================================================
-# 3. DETERMINISTIC REORDER QUANTITY ENGINE
+# 3. LEAD-TIME-AWARE REORDER QUANTITY ENGINE
 # ============================================================================
 def compute_reorder_qty(stock: float, target: float, velocity: float = 0.0, lead_time: float = 2.0, moq: int = 1) -> int:
     """
-    Computes exact reorder quantity required to reach target inventory level
-    accounting for lead time sales velocity and minimum order quantity (MOQ).
+    Computes exact reorder quantity required to reach target stock accounting for lead time sales demand.
+    Formula: Needed = (Target - Stock) + (Sales Velocity * Lead Time)
     """
     needed = (target - stock) + (velocity * lead_time)
     if needed <= 0:
         return 0
-    return math.ceil(needed / moq) * moq
+    if moq > 1:
+        return math.ceil(needed / moq) * moq
+    return int(needed)
 
 # ============================================================================
 # 4. DETERMINISTIC APPROVAL GUARD ENGINE
@@ -60,7 +62,7 @@ def compute_reorder_qty(stock: float, target: float, velocity: float = 0.0, lead
 def check_approval_required(total_value: float, threshold: float = 500.0) -> bool:
     """
     Single source of truth for human-in-the-loop approval guard.
-    Returns True if order value exceeds the autonomous threshold ($500.00).
+    Returns True if total order value exceeds the autonomous threshold ($500.00).
     """
     return total_value > threshold
 
@@ -105,7 +107,6 @@ def score_vendor_candidate(
     if max_unit_price and price > max_unit_price:
         return 0.0, f"DISQUALIFIED (Price ${price:.2f} > Policy Ceiling ${max_unit_price:.2f})", {}
     
-    # Calculate component scores (0.0 to 1.0)
     list_ref = max(list_price, price)
     price_score = max(0.0, min(1.0, 1.0 - ((price - (list_ref * 0.7)) / max(0.01, (list_ref * 0.6)))))
     reliability_score = max(0.0, min(1.0, reliability))
@@ -123,45 +124,72 @@ def score_vendor_candidate(
     return total_score, "QUALIFIED", breakdown
 
 # ============================================================================
-# 7. REALISTIC MULTI-ROUND A2A NEGOTIATION MATH
+# 7. UNIFIED MULTI-ROUND A2A NEGOTIATION ENGINE (SHARED FOR ALL PATHS)
 # ============================================================================
-def negotiate_a2a_round(
-    vendor_offer: Dict[str, Any],
+def negotiate_a2a_multi_round(
+    vendor_name: str,
+    list_price: float,
     quantity: int,
-    round_num: int = 1,
+    target_price: float = 3.30,
     max_unit_price: Optional[float] = None
 ) -> Dict[str, Any]:
     """
-    Simulates multi-round A2A negotiation logic:
-    - Round 1: Vendor standard list price / offer
-    - Round 2: Buyer requests volume discount (-10%), vendor counters based on floor margin
-    - Round 3: Final buyer target deal or walkaway
+    Single source of truth multi-round negotiation engine used by BOTH War Room and Chat.
+    - Round 1: Buyer opening bid (list_price * 0.88), Vendor counter (list_price * 0.96)
+    - Round 2: Buyer target bid, Vendor volume discount counter
+    - Round 3: Sealed final deal if compliant with max_unit_price policy ceiling.
     """
-    list_price = vendor_offer.get("price_wholesale", 5.0)
-    vendor_floor = list_price * 0.82  # Vendor minimum acceptable margin (18% max discount)
+    vendor_floor = round(list_price * 0.82, 2)
     
-    if round_num == 1:
-        if quantity >= 50:
-            offered_price = max(vendor_floor, list_price * 0.90)
-        else:
-            offered_price = list_price
-    elif round_num == 2:
-        offered_price = max(vendor_floor, list_price * 0.85)
+    if quantity >= 100:
+        disc_rate = 0.10
+    elif quantity >= 50:
+        disc_rate = 0.05
     else:
-        offered_price = max(vendor_floor, list_price * 0.83)
+        disc_rate = 0.00
+        
+    agreed_unit_price = max(vendor_floor, round(list_price * (1.0 - disc_rate), 2))
     
-    offered_price = round(offered_price, 2)
+    rounds = [
+        {
+            "round": 1,
+            "buyer_bid": round(list_price * 0.88, 2),
+            "vendor_counter": round(list_price * 0.96, 2),
+            "status": "COUNTER_OFFER"
+        },
+        {
+            "round": 2,
+            "buyer_bid": round(target_price, 2),
+            "vendor_counter": agreed_unit_price,
+            "status": "COUNTER_OFFER"
+        },
+        {
+            "round": 3,
+            "buyer_bid": agreed_unit_price,
+            "vendor_counter": agreed_unit_price,
+            "status": "DEAL_SEALED"
+        }
+    ]
     
-    # Check policy ceiling
-    exceeds_policy = max_unit_price and (offered_price > max_unit_price)
+    exceeds_ceiling = max_unit_price is not None and (agreed_unit_price > max_unit_price)
+    status = "REJECTED_CEILING_EXCEEDED" if exceeds_ceiling else "ACCEPTED"
+    
+    total_cost = round(agreed_unit_price * quantity, 2)
+    list_total = round(list_price * quantity, 2)
+    savings = round(list_total - total_cost, 2)
     
     return {
-        "round": round_num,
-        "negotiated_price": offered_price,
+        "vendor_name": vendor_name,
+        "negotiated_price": agreed_unit_price,
         "list_price": list_price,
-        "unit_savings": round(list_price - offered_price, 2),
-        "total_savings": round((list_price - offered_price) * quantity, 2),
-        "total_cost": round(offered_price * quantity, 2),
-        "list_total": round(list_price * quantity, 2),
-        "policy_compliant": not exceeds_policy
+        "quantity": quantity,
+        "total_cost": total_cost,
+        "list_total": list_total,
+        "savings": max(0.0, savings),
+        "status": status,
+        "policy_compliant": not exceeds_ceiling,
+        "max_unit_price": max_unit_price,
+        "rounds": rounds
     }
+
+negotiate_a2a_round = negotiate_a2a_multi_round
