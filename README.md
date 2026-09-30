@@ -25,7 +25,7 @@ An **enterprise-grade multi-agent system** that autonomously manages retail supp
 🔗 [Live Demo →](https://opti-vendor-h9hsmnvx5xfkzxujmrvsky.streamlit.app)
 ---
 
-**Try these 3 scenarios in 2 minutes:**
+**Try these 3 scenarios:**
 
 1. **Detect Stockout Risk** — Type: `"Check my store inventory"`
    - System identifies critical stock items
