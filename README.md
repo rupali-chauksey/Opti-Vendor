@@ -427,17 +427,7 @@ streamlit run app.py
 | Data | Pandas |
 | Language | Python 3.10+ |
 
-## 🏛️ System Architecture & Deterministic Execution
 
-```mermaid
-flowchart LR
-    A["👤 User / Trigger"] --> B["🧠 Orchestrator"]
-    B --> C["📊 Shelf Monitor"]
-    C --> D["📜 Strategic Policy"]
-    D --> E["🔍 Marketplace Discovery"]
-    E --> F["💬 A2A Negotiator"]
-    F --> G["🛡️ Safety Guardrails"]
-    G --> H["📋 Purchase Order"]
 ```
 
 > **Deterministic Math & Decision Engine Note:**  
