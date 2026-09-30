@@ -462,15 +462,6 @@ optivendor/
 
 ---
 
-## 🧪 Testing
-
-```bash
-# Manual: Use sidebar demo buttons in app
-
-# Automated:
-python evals.py                           # 6 test cases
-python test_inventory_guardrails.py       # Unit tests
-```
 
 ---
 
